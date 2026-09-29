@@ -43,11 +43,15 @@ model Trip {
   endDate       DateTime?
   status        String    @default("planning")
   coverImageUrl String?
+  budgetTotal    Float?
+  budgetCurrency String   @default("USD")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   days      Day[]
   checklist ChecklistItem[]
+  expenses  Expense[]
+  documents Document[]
 
   @@index([shop, customerId])
 }
@@ -89,6 +93,35 @@ model ChecklistItem {
   trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
   label     String
   done      Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tripId])
+}
+
+model Expense {
+  id        String    @id @default(cuid())
+  tripId    String
+  trip      Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  category  String    @default("otros")
+  label     String
+  amount    Float
+  date      DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([tripId])
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  title     String
+  category  String   @default("otro")
+  url       String?
+  note      String?
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

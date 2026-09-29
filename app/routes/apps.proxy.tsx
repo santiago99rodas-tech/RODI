@@ -36,6 +36,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       include: {
         days: { orderBy: { sortOrder: "asc" }, include: { activities: { orderBy: { sortOrder: "asc" } } } },
         checklist: { orderBy: { sortOrder: "asc" } },
+        expenses: { orderBy: { createdAt: "desc" } },
+        documents: { orderBy: { sortOrder: "asc" } },
       },
     });
     if (!trip) return Response.json({ error: "Not found" }, { status: 404 });
@@ -92,6 +94,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           ...(body.startDate !== undefined ? { startDate: body.startDate ? new Date(body.startDate) : null } : {}),
           ...(body.endDate !== undefined ? { endDate: body.endDate ? new Date(body.endDate) : null } : {}),
           ...(body.status !== undefined ? { status: body.status } : {}),
+          ...(body.budgetTotal !== undefined
+            ? { budgetTotal: body.budgetTotal === null || body.budgetTotal === "" ? null : Number(body.budgetTotal) }
+            : {}),
+          ...(body.budgetCurrency !== undefined ? { budgetCurrency: body.budgetCurrency } : {}),
         },
       });
       return Response.json({ trip });
@@ -222,6 +228,106 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         return Response.json({ error: "Not found" }, { status: 404 });
       }
       await db.checklistItem.delete({ where: { id: body.itemId } });
+      return Response.json({ ok: true });
+    }
+
+    case "createExpense": {
+      await assertTripOwnership(body.tripId, shop, customerId);
+      const amount = Number(body.amount);
+      if (!Number.isFinite(amount)) {
+        return Response.json({ error: "Invalid amount" }, { status: 400 });
+      }
+      const expense = await db.expense.create({
+        data: {
+          tripId: body.tripId,
+          category: body.category ?? "otros",
+          label: String(body.label ?? ""),
+          amount,
+          date: body.date ? new Date(body.date) : null,
+        },
+      });
+      return Response.json({ expense });
+    }
+
+    case "updateExpense": {
+      const expense = await db.expense.findUnique({ where: { id: body.expenseId }, include: { trip: true } });
+      if (!expense || expense.trip.shop !== shop || expense.trip.customerId !== customerId) {
+        return Response.json({ error: "Not found" }, { status: 404 });
+      }
+      const updated = await db.expense.update({
+        where: { id: body.expenseId },
+        data: {
+          ...(body.category !== undefined ? { category: body.category } : {}),
+          ...(body.label !== undefined ? { label: body.label } : {}),
+          ...(body.amount !== undefined ? { amount: Number(body.amount) } : {}),
+          ...(body.date !== undefined ? { date: body.date ? new Date(body.date) : null } : {}),
+        },
+      });
+      return Response.json({ expense: updated });
+    }
+
+    case "deleteExpense": {
+      const expense = await db.expense.findUnique({ where: { id: body.expenseId }, include: { trip: true } });
+      if (!expense || expense.trip.shop !== shop || expense.trip.customerId !== customerId) {
+        return Response.json({ error: "Not found" }, { status: 404 });
+      }
+      await db.expense.delete({ where: { id: body.expenseId } });
+      return Response.json({ ok: true });
+    }
+
+    case "createDocument": {
+      await assertTripOwnership(body.tripId, shop, customerId);
+      const title = String(body.title ?? "").trim();
+      if (!title) {
+        return Response.json({ error: "Title is required" }, { status: 400 });
+      }
+      const url = body.url ? String(body.url).trim() : null;
+      if (url && !/^https?:\/\//i.test(url)) {
+        return Response.json({ error: "Invalid URL" }, { status: 400 });
+      }
+      const count = await db.document.count({ where: { tripId: body.tripId } });
+      const document = await db.document.create({
+        data: {
+          tripId: body.tripId,
+          title,
+          category: body.category ?? "otro",
+          url,
+          note: body.note ?? null,
+          sortOrder: count,
+        },
+      });
+      return Response.json({ document });
+    }
+
+    case "updateDocument": {
+      const document = await db.document.findUnique({ where: { id: body.documentId }, include: { trip: true } });
+      if (!document || document.trip.shop !== shop || document.trip.customerId !== customerId) {
+        return Response.json({ error: "Not found" }, { status: 404 });
+      }
+      if (body.url) {
+        const url = String(body.url).trim();
+        if (!/^https?:\/\//i.test(url)) {
+          return Response.json({ error: "Invalid URL" }, { status: 400 });
+        }
+      }
+      const updated = await db.document.update({
+        where: { id: body.documentId },
+        data: {
+          ...(body.title !== undefined ? { title: body.title } : {}),
+          ...(body.category !== undefined ? { category: body.category } : {}),
+          ...(body.url !== undefined ? { url: body.url ? String(body.url).trim() : null } : {}),
+          ...(body.note !== undefined ? { note: body.note } : {}),
+        },
+      });
+      return Response.json({ document: updated });
+    }
+
+    case "deleteDocument": {
+      const document = await db.document.findUnique({ where: { id: body.documentId }, include: { trip: true } });
+      if (!document || document.trip.shop !== shop || document.trip.customerId !== customerId) {
+        return Response.json({ error: "Not found" }, { status: 404 });
+      }
+      await db.document.delete({ where: { id: body.documentId } });
       return Response.json({ ok: true });
     }
 
