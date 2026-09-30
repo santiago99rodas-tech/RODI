@@ -48,12 +48,26 @@ model Trip {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  days      Day[]
-  checklist ChecklistItem[]
-  expenses  Expense[]
-  documents Document[]
+  days         Day[]
+  checklist    ChecklistItem[]
+  expenses     Expense[]
+  documents    Document[]
+  participants Participant[]
 
   @@index([shop, customerId])
+}
+
+model Participant {
+  id        String   @id @default(cuid())
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  expenses Expense[]
+
+  @@index([tripId])
 }
 
 model Day {
@@ -92,6 +106,7 @@ model ChecklistItem {
   tripId    String
   trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
   label     String
+  category  String?
   done      Boolean  @default(false)
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
@@ -101,30 +116,55 @@ model ChecklistItem {
 }
 
 model Expense {
-  id        String    @id @default(cuid())
-  tripId    String
-  trip      Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  category  String    @default("otros")
-  label     String
-  amount    Float
-  date      DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id          String       @id @default(cuid())
+  tripId      String
+  trip        Trip         @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  category    String       @default("otros")
+  label       String
+  amount      Float
+  date        DateTime?
+  paidById    String?
+  paidBy      Participant? @relation(fields: [paidById], references: [id], onDelete: SetNull)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   @@index([tripId])
+  @@index([paidById])
 }
 
+// Documents can belong to one trip (tripId set, e.g. a hotel reservation)
+// or to the member directly (tripId null, e.g. a passport that outlives any
+// single trip) — the Alertas de vencimiento page reads the customer-level
+// ones via shop+customerId, independent of trips.
 model Document {
-  id        String   @id @default(cuid())
-  tripId    String
-  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  title     String
-  category  String   @default("otro")
-  url       String?
-  note      String?
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  shop       String
+  customerId String
+  tripId     String?
+  trip       Trip?    @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  title      String
+  category   String   @default("otro")
+  url        String?
+  note       String?
+  expiresAt  DateTime?
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([tripId])
+  @@index([shop, customerId])
+}
+
+model EmergencyContact {
+  id         String   @id @default(cuid())
+  shop       String
+  customerId String
+  name       String
+  phone      String?
+  note       String?
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([shop, customerId])
 }

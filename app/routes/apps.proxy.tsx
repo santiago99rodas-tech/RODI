@@ -30,6 +30,23 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { searchParams } = new URL(request.url);
   const tripId = searchParams.get("tripId");
 
+  // Member-level data that isn't scoped to any single trip: emergency
+  // contacts and documents like a passport that outlive one trip (Modo
+  // emergencia, Alertas de vencimiento).
+  if (searchParams.get("personal")) {
+    const [emergencyContacts, documents] = await Promise.all([
+      db.emergencyContact.findMany({
+        where: { shop: session.shop, customerId },
+        orderBy: { sortOrder: "asc" },
+      }),
+      db.document.findMany({
+        where: { shop: session.shop, customerId, tripId: null },
+        orderBy: { sortOrder: "asc" },
+      }),
+    ]);
+    return Response.json({ emergencyContacts, documents });
+  }
+
   if (tripId) {
     const trip = await db.trip.findFirst({
       where: { id: tripId, shop: session.shop, customerId },
@@ -38,6 +55,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         checklist: { orderBy: { sortOrder: "asc" } },
         expenses: { orderBy: { createdAt: "desc" } },
         documents: { orderBy: { sortOrder: "asc" } },
+        participants: { orderBy: { sortOrder: "asc" } },
       },
     });
     if (!trip) return Response.json({ error: "Not found" }, { status: 404 });
@@ -205,7 +223,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       await assertTripOwnership(body.tripId, shop, customerId);
       const count = await db.checklistItem.count({ where: { tripId: body.tripId } });
       const item = await db.checklistItem.create({
-        data: { tripId: body.tripId, label: String(body.label ?? ""), sortOrder: count },
+        data: {
+          tripId: body.tripId,
+          label: String(body.label ?? ""),
+          category: body.category ?? null,
+          sortOrder: count,
+        },
       });
       return Response.json({ item });
     }
@@ -244,6 +267,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           label: String(body.label ?? ""),
           amount,
           date: body.date ? new Date(body.date) : null,
+          paidById: body.paidById ?? null,
         },
       });
       return Response.json({ expense });
@@ -261,6 +285,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           ...(body.label !== undefined ? { label: body.label } : {}),
           ...(body.amount !== undefined ? { amount: Number(body.amount) } : {}),
           ...(body.date !== undefined ? { date: body.date ? new Date(body.date) : null } : {}),
+          ...(body.paidById !== undefined ? { paidById: body.paidById } : {}),
         },
       });
       return Response.json({ expense: updated });
@@ -275,8 +300,34 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return Response.json({ ok: true });
     }
 
-    case "createDocument": {
+    case "createParticipant": {
       await assertTripOwnership(body.tripId, shop, customerId);
+      const name = String(body.name ?? "").trim();
+      if (!name) return Response.json({ error: "Name is required" }, { status: 400 });
+      const count = await db.participant.count({ where: { tripId: body.tripId } });
+      const participant = await db.participant.create({
+        data: { tripId: body.tripId, name, sortOrder: count },
+      });
+      return Response.json({ participant });
+    }
+
+    case "deleteParticipant": {
+      const participant = await db.participant.findUnique({
+        where: { id: body.participantId },
+        include: { trip: true },
+      });
+      if (!participant || participant.trip.shop !== shop || participant.trip.customerId !== customerId) {
+        return Response.json({ error: "Not found" }, { status: 404 });
+      }
+      await db.participant.delete({ where: { id: body.participantId } });
+      return Response.json({ ok: true });
+    }
+
+    case "createDocument": {
+      // tripId is optional: set it for a trip-specific document (e.g. a
+      // hotel reservation), omit it for a member-level one that outlives
+      // any single trip (e.g. a passport, shown on Alertas de vencimiento).
+      if (body.tripId) await assertTripOwnership(body.tripId, shop, customerId);
       const title = String(body.title ?? "").trim();
       if (!title) {
         return Response.json({ error: "Title is required" }, { status: 400 });
@@ -285,14 +336,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       if (url && !/^https?:\/\//i.test(url)) {
         return Response.json({ error: "Invalid URL" }, { status: 400 });
       }
-      const count = await db.document.count({ where: { tripId: body.tripId } });
+      const count = await db.document.count({
+        where: body.tripId ? { tripId: body.tripId } : { shop, customerId, tripId: null },
+      });
       const document = await db.document.create({
         data: {
-          tripId: body.tripId,
+          shop,
+          customerId,
+          tripId: body.tripId ?? null,
           title,
           category: body.category ?? "otro",
           url,
           note: body.note ?? null,
+          expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
           sortOrder: count,
         },
       });
@@ -300,8 +356,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
 
     case "updateDocument": {
-      const document = await db.document.findUnique({ where: { id: body.documentId }, include: { trip: true } });
-      if (!document || document.trip.shop !== shop || document.trip.customerId !== customerId) {
+      const document = await db.document.findFirst({
+        where: { id: body.documentId, shop, customerId },
+      });
+      if (!document) {
         return Response.json({ error: "Not found" }, { status: 404 });
       }
       if (body.url) {
@@ -317,17 +375,62 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           ...(body.category !== undefined ? { category: body.category } : {}),
           ...(body.url !== undefined ? { url: body.url ? String(body.url).trim() : null } : {}),
           ...(body.note !== undefined ? { note: body.note } : {}),
+          ...(body.expiresAt !== undefined ? { expiresAt: body.expiresAt ? new Date(body.expiresAt) : null } : {}),
         },
       });
       return Response.json({ document: updated });
     }
 
     case "deleteDocument": {
-      const document = await db.document.findUnique({ where: { id: body.documentId }, include: { trip: true } });
-      if (!document || document.trip.shop !== shop || document.trip.customerId !== customerId) {
+      const document = await db.document.findFirst({
+        where: { id: body.documentId, shop, customerId },
+      });
+      if (!document) {
         return Response.json({ error: "Not found" }, { status: 404 });
       }
       await db.document.delete({ where: { id: body.documentId } });
+      return Response.json({ ok: true });
+    }
+
+    case "createEmergencyContact": {
+      const name = String(body.name ?? "").trim();
+      if (!name) return Response.json({ error: "Name is required" }, { status: 400 });
+      const count = await db.emergencyContact.count({ where: { shop, customerId } });
+      const contact = await db.emergencyContact.create({
+        data: {
+          shop,
+          customerId,
+          name,
+          phone: body.phone ?? null,
+          note: body.note ?? null,
+          sortOrder: count,
+        },
+      });
+      return Response.json({ contact });
+    }
+
+    case "updateEmergencyContact": {
+      const contact = await db.emergencyContact.findFirst({
+        where: { id: body.contactId, shop, customerId },
+      });
+      if (!contact) return Response.json({ error: "Not found" }, { status: 404 });
+      const updated = await db.emergencyContact.update({
+        where: { id: body.contactId },
+        data: {
+          ...(body.name !== undefined ? { name: body.name } : {}),
+          ...(body.phone !== undefined ? { phone: body.phone } : {}),
+          ...(body.note !== undefined ? { note: body.note } : {}),
+        },
+      });
+      return Response.json({ contact: updated });
+    }
+
+    case "deleteEmergencyContact": {
+      const contact = await db.emergencyContact.findFirst({
+        where: { id: body.contactId, shop, customerId },
+      });
+      if (!contact) return Response.json({ error: "Not found" }, { status: 404 });
+      await db.emergencyContact.delete({ where: { id: body.contactId } });
       return Response.json({ ok: true });
     }
 
