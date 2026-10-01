@@ -30,6 +30,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const shop = session.shop;
   const form = await request.formData();
   const id = String(form.get("id"));
+  const intent = form.get("intent");
+
+  if (intent === "delete") {
+    await db.serviceInquiry.deleteMany({ where: { id, shop } });
+    return { ok: true };
+  }
+
   const status = form.get("status");
   const internalNote = form.get("internalNote");
 
@@ -84,6 +91,16 @@ function InquiryRow({ inquiry, fetcher }: { inquiry: any; fetcher: ReturnType<ty
           onClick={() => fetcher.submit({ id: inquiry.id, internalNote: note }, { method: "POST" })}
         >
           Save note
+        </s-button>
+
+        <s-button
+          tone="critical"
+          onClick={() => {
+            if (!window.confirm(`Permanently delete this ${inquiry.serviceType} inquiry? This cannot be undone.`)) return;
+            fetcher.submit({ id: inquiry.id, intent: "delete" }, { method: "POST" });
+          }}
+        >
+          Delete permanently
         </s-button>
       </s-stack>
     </s-box>
