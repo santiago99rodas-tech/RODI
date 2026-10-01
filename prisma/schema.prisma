@@ -48,12 +48,13 @@ model Trip {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  days          Day[]
-  checklist     ChecklistItem[]
-  expenses      Expense[]
-  documents     Document[]
-  participants  Participant[]
-  journalEntries JournalEntry[]
+  days             Day[]
+  checklist        ChecklistItem[]
+  expenses         Expense[]
+  documents        Document[]
+  participants     Participant[]
+  journalEntries   JournalEntry[]
+  serviceInquiries ServiceInquiry[]
 
   @@index([shop, customerId])
 }
@@ -283,4 +284,29 @@ model CommunityRecommendation {
   updatedAt  DateTime @updatedAt
 
   @@index([shop, status])
+}
+
+// Fase 4, RODI Services. Open to any signed-in customer (no Club gate —
+// these are paid add-ons, not a membership perk), but there's no live
+// payment gateway yet (Fase 2 is paused), so this is a waitlist/inquiry
+// pipeline rather than a real purchase: a customer requests a service,
+// RODI follows up manually. status tracks that manual pipeline;
+// "purchased" is reserved for when Fase 2 billing exists. internalNote is
+// admin-only — app.service-inquiries.tsx can read/write it, but the
+// customer-facing services=1 read in apps.proxy.tsx always omits it.
+model ServiceInquiry {
+  id           String   @id @default(cuid())
+  shop         String
+  customerId   String
+  serviceType  String   // the `service` metaobject's slug
+  tripId       String?
+  trip         Trip?    @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  status       String   @default("information_required") // information_required | in_review | delivered | closed | purchased
+  notes        String?
+  internalNote String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([shop, customerId])
+  @@index([tripId])
 }

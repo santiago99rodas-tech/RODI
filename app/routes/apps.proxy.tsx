@@ -213,6 +213,26 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   const tripId = searchParams.get("tripId");
 
+  // Fase 4, RODI Services. Open to any signed-in customer, no Club gate —
+  // explicitly never returns internalNote (admin-only, see
+  // app.service-inquiries.tsx).
+  if (searchParams.get("services")) {
+    const inquiries = await db.serviceInquiry.findMany({
+      where: { shop: session.shop, customerId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        serviceType: true,
+        tripId: true,
+        status: true,
+        notes: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+    return Response.json({ inquiries });
+  }
+
   // Member-level data that isn't scoped to any single trip: emergency
   // contacts and documents like a passport that outlive one trip (Modo
   // emergencia, Alertas de vencimiento).
@@ -843,6 +863,34 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         },
       });
       return Response.json({ recommendation });
+    }
+
+    case "createServiceInquiry": {
+      // No membership.isClub check — RODI Services is open to any
+      // signed-in customer, Free or Club, same as the original spec's
+      // "one-time paid add-on" framing (not a membership perk).
+      const serviceType = String(body.serviceType ?? "").trim();
+      if (!serviceType) return Response.json({ error: "serviceType is required" }, { status: 400 });
+      if (body.tripId) await assertTripOwnership(body.tripId, shop, customerId);
+      const inquiry = await db.serviceInquiry.create({
+        data: {
+          shop,
+          customerId,
+          serviceType,
+          tripId: body.tripId || null,
+          notes: body.notes || null,
+        },
+        select: {
+          id: true,
+          serviceType: true,
+          tripId: true,
+          status: true,
+          notes: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+      return Response.json({ inquiry });
     }
 
     default:
