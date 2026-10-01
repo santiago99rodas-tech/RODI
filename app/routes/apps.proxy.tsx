@@ -175,12 +175,42 @@ function buildYearInTravel(trips: YearTripInput[], journalEntries: YearJournalIn
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.public.appProxy(request);
-  const customerId = getCustomerId(request);
-  if (!session || !customerId) {
-    return Response.json({ error: "Sign in required" }, { status: 401 });
+  if (!session) {
+    return Response.json({ error: "Invalid proxy request" }, { status: 401 });
   }
 
   const { searchParams } = new URL(request.url);
+
+  // Community reads are public by design (Fase 3 Milestone 6) — Shopify
+  // still signs/proxies this request either way, but unlike every other
+  // branch below, these don't require logged_in_customer_id. Only
+  // status:"published" rows are ever returned here; flagged/removed stay
+  // invisible to this public branch regardless of who's asking.
+  if (searchParams.get("community") === "questions") {
+    const questions = await db.communityQuestion.findMany({
+      where: { shop: session.shop, status: "published" },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      include: {
+        answers: { where: { status: "published" }, orderBy: { createdAt: "asc" } },
+      },
+    });
+    return Response.json({ questions });
+  }
+  if (searchParams.get("community") === "recommendations") {
+    const recommendations = await db.communityRecommendation.findMany({
+      where: { shop: session.shop, status: "published" },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+    return Response.json({ recommendations });
+  }
+
+  const customerId = getCustomerId(request);
+  if (!customerId) {
+    return Response.json({ error: "Sign in required" }, { status: 401 });
+  }
+
   const tripId = searchParams.get("tripId");
 
   // Member-level data that isn't scoped to any single trip: emergency
@@ -758,6 +788,61 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       if (!entry) return Response.json({ error: "Not found" }, { status: 404 });
       await db.journalEntry.delete({ where: { id: body.entryId } });
       return Response.json({ ok: true });
+    }
+
+    case "createCommunityQuestion": {
+      if (!membership.isClub) {
+        return Response.json({ error: "CLUB_ONLY", feature: "community" }, { status: 403 });
+      }
+      const title = String(body.title ?? "").trim();
+      const bodyText = String(body.body ?? "").trim();
+      if (!title || !bodyText) {
+        return Response.json({ error: "Title and body are required" }, { status: 400 });
+      }
+      const authorName = String(body.authorName ?? "").trim().slice(0, 80) || "RODI member";
+      const question = await db.communityQuestion.create({
+        data: { shop, customerId, authorName, title, body: bodyText },
+      });
+      return Response.json({ question });
+    }
+
+    case "createCommunityAnswer": {
+      if (!membership.isClub) {
+        return Response.json({ error: "CLUB_ONLY", feature: "community" }, { status: 403 });
+      }
+      const bodyText = String(body.body ?? "").trim();
+      if (!bodyText) return Response.json({ error: "Body is required" }, { status: 400 });
+      const question = await db.communityQuestion.findFirst({ where: { id: body.questionId, shop } });
+      if (!question) return Response.json({ error: "Not found" }, { status: 404 });
+      const authorName = String(body.authorName ?? "").trim().slice(0, 80) || "RODI member";
+      const answer = await db.communityAnswer.create({
+        data: { shop, customerId, questionId: body.questionId, authorName, body: bodyText },
+      });
+      return Response.json({ answer });
+    }
+
+    case "createCommunityRecommendation": {
+      if (!membership.isClub) {
+        return Response.json({ error: "CLUB_ONLY", feature: "community" }, { status: 403 });
+      }
+      const title = String(body.title ?? "").trim();
+      const bodyText = String(body.body ?? "").trim();
+      if (!title || !bodyText) {
+        return Response.json({ error: "Title and body are required" }, { status: 400 });
+      }
+      const authorName = String(body.authorName ?? "").trim().slice(0, 80) || "RODI member";
+      const recommendation = await db.communityRecommendation.create({
+        data: {
+          shop,
+          customerId,
+          authorName,
+          title,
+          body: bodyText,
+          category: body.category || null,
+          city: body.city || null,
+        },
+      });
+      return Response.json({ recommendation });
     }
 
     default:

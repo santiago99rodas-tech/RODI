@@ -229,3 +229,58 @@ model JournalEntry {
   @@index([shop, customerId])
   @@index([tripId])
 }
+
+// Fase 3 Milestone 6, Club-only to post, public to read (status:"published").
+// authorName is a snapshot of the customer's display name at post time —
+// the proxy only ever gets a numeric customerId from Shopify, not a profile
+// lookup, so the theme sends the name along with the post instead of this
+// app fetching it. status is the moderation lever (app.community-
+// moderation.tsx): published is visible publicly, flagged/removed are not,
+// and nothing here is ever hard-deleted by a member-facing op.
+model CommunityQuestion {
+  id         String   @id @default(cuid())
+  shop       String
+  customerId String
+  authorName String
+  title      String
+  body       String
+  status     String   @default("published") // published | flagged | removed
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  answers CommunityAnswer[]
+
+  @@index([shop, status])
+}
+
+model CommunityAnswer {
+  id         String            @id @default(cuid())
+  shop       String
+  customerId String
+  authorName String
+  questionId String
+  question   CommunityQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  body       String
+  status     String            @default("published")
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  @@index([questionId])
+  @@index([shop, status])
+}
+
+model CommunityRecommendation {
+  id         String   @id @default(cuid())
+  shop       String
+  customerId String
+  authorName String
+  title      String
+  body       String
+  category   String?
+  city       String?
+  status     String   @default("published")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([shop, status])
+}

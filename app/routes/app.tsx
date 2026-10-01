@@ -21,6 +21,7 @@ export default function App() {
         <s-link href="/app">Home</s-link>
         <s-link href="/app/additional">Additional page</s-link>
         <s-link href="/app/membership-backfill">Club launch promo backfill</s-link>
+        <s-link href="/app/community-moderation">Community moderation</s-link>
       </s-app-nav>
       <Outlet />
     </AppProvider>
