@@ -7,7 +7,7 @@ name = "rodi-trip-planner"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = ""
+scopes = "read_customers,write_customers"
 
 [app_proxy]
 url = "https://rodi-trip-planner-app.s2kt4t.easypanel.host/apps/proxy"
