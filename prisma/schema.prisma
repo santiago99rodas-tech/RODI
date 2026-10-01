@@ -168,3 +168,26 @@ model EmergencyContact {
 
   @@index([shop, customerId])
 }
+
+// Internal bookkeeping for RODI Club membership state — never read directly
+// for gating. resolveMembership() in app/membership.server.ts is the single
+// place that turns this into an effective status, and the only thing ever
+// projected out to the theme is one derived date (club_access_until, via a
+// customer metafield): status here can go stale between events (no cron
+// exists in this app to sweep expirations), the projected date can't.
+model Membership {
+  id               String    @id @default(cuid())
+  shop             String
+  customerId       String
+  status           String    @default("FREE") // FREE | PROMOTIONAL_ACCESS | ACTIVE | PAST_DUE | CANCELLED | EXPIRED
+  promoStart       DateTime?
+  promoEnd         DateTime?
+  promoSource      String?   // e.g. "launch_2026", "manual_grant"
+  subscriptionId   String?   // reserved for Fase 2 (Shopify subscription/contract id)
+  currentPeriodEnd DateTime? // reserved for Fase 2
+  cancelledAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([shop, customerId])
+}

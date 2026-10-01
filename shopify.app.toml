@@ -25,6 +25,14 @@ api_version = "2026-10"
   uri = "/webhooks/app/scopes_update"
   topics = [ "app/scopes_update" ]
 
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/customers/create"
+  topics = [ "customers/create" ]
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/customers/update"
+  topics = [ "customers/update" ]
+
 [auth]
 redirect_urls = [ "https://rodi-trip-planner-app.s2kt4t.easypanel.host/api/auth" ]
 
