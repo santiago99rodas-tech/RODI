@@ -137,6 +137,42 @@ function buildSmartPackingList(trip: { startDate: Date | null; endDate: Date | n
   return items;
 }
 
+// Year in Travel (Fase 3, Milestone 5, Club-only) — built from Trip +
+// JournalEntry only, both of which have real structured dates. The
+// customer.travel_log metafield (Mi Pasaporte) has free-text dates
+// ("date_visited" like "Summer 2023"), so it's deliberately not
+// cross-referenced here rather than guessing at a parse.
+type YearTripInput = { destination: string | null; startDate: Date | null; endDate: Date | null };
+type YearJournalInput = { entryDate: Date | null; createdAt: Date };
+
+function buildYearInTravel(trips: YearTripInput[], journalEntries: YearJournalInput[], year: number) {
+  const tripsInYear = trips.filter((t) => t.startDate && t.startDate.getFullYear() === year);
+  const destinations = Array.from(
+    new Set(
+      tripsInYear
+        .map((t) => (t.destination || "").trim())
+        .filter((d) => d.length > 0),
+    ),
+  );
+  const totalDays = tripsInYear.reduce((sum, t) => {
+    if (!t.startDate || !t.endDate) return sum;
+    const diffDays = Math.round((t.endDate.getTime() - t.startDate.getTime()) / 86400000);
+    return sum + Math.max(1, diffDays + 1);
+  }, 0);
+  const journalEntriesCount = journalEntries.filter((e) => {
+    const effectiveDate = e.entryDate || e.createdAt;
+    return effectiveDate.getFullYear() === year;
+  }).length;
+
+  return {
+    year,
+    tripsCount: tripsInYear.length,
+    destinations,
+    totalDays,
+    journalEntriesCount,
+  };
+}
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.public.appProxy(request);
   const customerId = getCustomerId(request);
@@ -162,6 +198,38 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       }),
     ]);
     return Response.json({ emergencyContacts, documents });
+  }
+
+  if (searchParams.get("journal")) {
+    const membership = await resolveMembership(session.shop, customerId);
+    if (!membership.isClub) {
+      return Response.json({ error: "CLUB_ONLY", feature: "journal" }, { status: 403 });
+    }
+    const entries = await db.journalEntry.findMany({
+      where: { shop: session.shop, customerId },
+      orderBy: [{ entryDate: "desc" }, { createdAt: "desc" }],
+      include: { trip: { select: { id: true, title: true } } },
+    });
+    return Response.json({ entries });
+  }
+
+  if (searchParams.get("yearInTravel")) {
+    const membership = await resolveMembership(session.shop, customerId);
+    if (!membership.isClub) {
+      return Response.json({ error: "CLUB_ONLY", feature: "year_in_travel" }, { status: 403 });
+    }
+    const year = Number(searchParams.get("year")) || new Date().getFullYear();
+    const [trips, journalEntries] = await Promise.all([
+      db.trip.findMany({
+        where: { shop: session.shop, customerId },
+        select: { destination: true, startDate: true, endDate: true },
+      }),
+      db.journalEntry.findMany({
+        where: { shop: session.shop, customerId },
+        select: { entryDate: true, createdAt: true },
+      }),
+    ]);
+    return Response.json(buildYearInTravel(trips, journalEntries, year));
   }
 
   if (tripId && searchParams.get("readiness")) {
@@ -639,6 +707,56 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       });
       if (!contact) return Response.json({ error: "Not found" }, { status: 404 });
       await db.emergencyContact.delete({ where: { id: body.contactId } });
+      return Response.json({ ok: true });
+    }
+
+    case "createJournalEntry": {
+      if (!membership.isClub) {
+        return Response.json({ error: "CLUB_ONLY", feature: "journal" }, { status: 403 });
+      }
+      const bodyText = String(body.body ?? "").trim();
+      if (!bodyText) return Response.json({ error: "Body is required" }, { status: 400 });
+      if (body.tripId) await assertTripOwnership(body.tripId, shop, customerId);
+      const entry = await db.journalEntry.create({
+        data: {
+          shop,
+          customerId,
+          tripId: body.tripId || null,
+          countryHandle: body.countryHandle || null,
+          title: body.title || null,
+          body: bodyText,
+          photoUrl: body.photoUrl || null,
+          entryDate: body.entryDate ? new Date(body.entryDate) : null,
+        },
+      });
+      return Response.json({ entry });
+    }
+
+    case "updateJournalEntry": {
+      if (!membership.isClub) {
+        return Response.json({ error: "CLUB_ONLY", feature: "journal" }, { status: 403 });
+      }
+      const entry = await db.journalEntry.findFirst({ where: { id: body.entryId, shop, customerId } });
+      if (!entry) return Response.json({ error: "Not found" }, { status: 404 });
+      if (body.tripId) await assertTripOwnership(body.tripId, shop, customerId);
+      const updated = await db.journalEntry.update({
+        where: { id: body.entryId },
+        data: {
+          ...(body.tripId !== undefined ? { tripId: body.tripId || null } : {}),
+          ...(body.countryHandle !== undefined ? { countryHandle: body.countryHandle || null } : {}),
+          ...(body.title !== undefined ? { title: body.title || null } : {}),
+          ...(body.body !== undefined ? { body: String(body.body) } : {}),
+          ...(body.photoUrl !== undefined ? { photoUrl: body.photoUrl || null } : {}),
+          ...(body.entryDate !== undefined ? { entryDate: body.entryDate ? new Date(body.entryDate) : null } : {}),
+        },
+      });
+      return Response.json({ entry: updated });
+    }
+
+    case "deleteJournalEntry": {
+      const entry = await db.journalEntry.findFirst({ where: { id: body.entryId, shop, customerId } });
+      if (!entry) return Response.json({ error: "Not found" }, { status: 404 });
+      await db.journalEntry.delete({ where: { id: body.entryId } });
       return Response.json({ ok: true });
     }
 

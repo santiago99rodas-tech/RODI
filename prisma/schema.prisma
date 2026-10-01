@@ -48,11 +48,12 @@ model Trip {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  days         Day[]
-  checklist    ChecklistItem[]
-  expenses     Expense[]
-  documents    Document[]
-  participants Participant[]
+  days          Day[]
+  checklist     ChecklistItem[]
+  expenses      Expense[]
+  documents     Document[]
+  participants  Participant[]
+  journalEntries JournalEntry[]
 
   @@index([shop, customerId])
 }
@@ -201,4 +202,30 @@ model Membership {
   updatedAt        DateTime  @updatedAt
 
   @@unique([shop, customerId])
+}
+
+// Fase 3 Milestone 5, Club-only. A personal travel journal entry — may
+// belong to a trip (tripId) or stand alone (e.g. a memory from before the
+// Trip Planner existed). countryHandle is a plain string (the country
+// metaobject's handle, e.g. "morocco"), not a Prisma relation — Shopify
+// metaobjects live outside this database, so it's just a tag for display,
+// not a foreign key. Year in Travel reads this table directly (see
+// buildYearInTravel in apps.proxy.tsx) rather than the unstructured
+// customer.travel_log metafield, which has free-text dates.
+model JournalEntry {
+  id            String    @id @default(cuid())
+  shop          String
+  customerId    String
+  tripId        String?
+  trip          Trip?     @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  countryHandle String?
+  title         String?
+  body          String
+  photoUrl      String?
+  entryDate     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([shop, customerId])
+  @@index([tripId])
 }
