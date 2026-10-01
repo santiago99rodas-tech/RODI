@@ -1,6 +1,14 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
+import { resolveMembership } from "../membership.server";
+
+// Fase 3 Free-tier limits. Not configurable from Admin yet (no admin UI
+// exists in this app) — change these constants and redeploy if they need
+// to move.
+const FREE_TRIP_LIMIT = 1;
+const FREE_TIMELINE_ACTIVITY_LIMIT = 5;
+const FREE_BUDGET_EXPENSE_LIMIT = 10;
 
 // Single endpoint for the theme's Trip Planner UI, reached via Shopify's App
 // Proxy at /apps/trip-planner on the storefront. The proxy signs the request
@@ -77,6 +85,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return Response.json({ error: "Sign in required" }, { status: 401 });
   }
   const shop = session.shop;
+  const membership = await resolveMembership(shop, customerId);
 
   let body: Record<string, any>;
   try {
@@ -89,6 +98,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   switch (op) {
     case "createTrip": {
+      if (!membership.isClub) {
+        const existingCount = await db.trip.count({ where: { shop, customerId } });
+        if (existingCount >= FREE_TRIP_LIMIT) {
+          return Response.json({ error: "FREE_TRIP_LIMIT", limit: FREE_TRIP_LIMIT }, { status: 403 });
+        }
+      }
       const trip = await db.trip.create({
         data: {
           shop,
@@ -169,6 +184,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       const day = await db.day.findUnique({ where: { id: body.dayId }, include: { trip: true } });
       if (!day || day.trip.shop !== shop || day.trip.customerId !== customerId) {
         return Response.json({ error: "Not found" }, { status: 404 });
+      }
+      if (!membership.isClub) {
+        const tripActivityCount = await db.activity.count({ where: { day: { tripId: day.tripId } } });
+        if (tripActivityCount >= FREE_TIMELINE_ACTIVITY_LIMIT) {
+          return Response.json(
+            { error: "FREE_TIMELINE_LIMIT", limit: FREE_TIMELINE_ACTIVITY_LIMIT },
+            { status: 403 },
+          );
+        }
       }
       const count = await db.activity.count({ where: { dayId: body.dayId } });
       const activity = await db.activity.create({
@@ -260,9 +284,26 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       if (!Number.isFinite(amount)) {
         return Response.json({ error: "Invalid amount" }, { status: 400 });
       }
+      // Defaults to "budget" for callers that haven't been updated to pass
+      // kind explicitly yet — matches the column's own default, so this is
+      // never a behavior change for Budget, only an enabler for Split.
+      const kind = body.kind === "split" ? "split" : "budget";
+      if (!membership.isClub) {
+        if (kind === "split") {
+          return Response.json({ error: "CLUB_ONLY", feature: "split" }, { status: 403 });
+        }
+        const budgetExpenseCount = await db.expense.count({ where: { tripId: body.tripId, kind: "budget" } });
+        if (budgetExpenseCount >= FREE_BUDGET_EXPENSE_LIMIT) {
+          return Response.json(
+            { error: "FREE_BUDGET_LIMIT", limit: FREE_BUDGET_EXPENSE_LIMIT },
+            { status: 403 },
+          );
+        }
+      }
       const expense = await db.expense.create({
         data: {
           tripId: body.tripId,
+          kind,
           category: body.category ?? "otros",
           label: String(body.label ?? ""),
           amount,
@@ -301,6 +342,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
 
     case "createParticipant": {
+      // Participants exist only to attribute Split expenses to someone —
+      // Split itself is Club-only, so there's no Free use case for this op.
+      if (!membership.isClub) {
+        return Response.json({ error: "CLUB_ONLY", feature: "split" }, { status: 403 });
+      }
       await assertTripOwnership(body.tripId, shop, customerId);
       const name = String(body.name ?? "").trim();
       if (!name) return Response.json({ error: "Name is required" }, { status: 400 });
@@ -327,6 +373,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       // tripId is optional: set it for a trip-specific document (e.g. a
       // hotel reservation), omit it for a member-level one that outlives
       // any single trip (e.g. a passport, shown on Alertas de vencimiento).
+      // Only the member-level (Alertas) branch is Club-only — trip-scoped
+      // documents stay available to Free.
+      if (!body.tripId && !membership.isClub) {
+        return Response.json({ error: "CLUB_ONLY", feature: "alerts" }, { status: 403 });
+      }
       if (body.tripId) await assertTripOwnership(body.tripId, shop, customerId);
       const title = String(body.title ?? "").trim();
       if (!title) {
@@ -393,6 +444,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
 
     case "createEmergencyContact": {
+      if (!membership.isClub) {
+        return Response.json({ error: "CLUB_ONLY", feature: "emergency" }, { status: 403 });
+      }
       const name = String(body.name ?? "").trim();
       if (!name) return Response.json({ error: "Name is required" }, { status: 400 });
       const count = await db.emergencyContact.count({ where: { shop, customerId } });

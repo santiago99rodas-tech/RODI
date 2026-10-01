@@ -109,6 +109,11 @@ model ChecklistItem {
   category  String?
   done      Boolean  @default(false)
   sortOrder Int      @default(0)
+  // "manual" (typed by the customer) | "default_template" (today's fixed
+  // starter checklist) | "smart" (Fase 3 Smart Packing generator, Club-only)
+  // — lets a Smart Packing regenerate wipe only its own items on a re-run
+  // without touching anything the customer added themselves.
+  source    String   @default("manual")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -125,6 +130,12 @@ model Expense {
   date        DateTime?
   paidById    String?
   paidBy      Participant? @relation(fields: [paidById], references: [id], onDelete: SetNull)
+  // "budget" (Presupuesto page) | "split" (Split de gastos) — Budget and
+  // Split shared one Expense pool with no way to tell them apart before
+  // this field; Fase 3 gates them independently (Split is Club-only), so
+  // Budget's "all expenses" views must now filter to kind:"budget" or
+  // they'd double-count Split entries once those exist.
+  kind        String       @default("budget")
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
