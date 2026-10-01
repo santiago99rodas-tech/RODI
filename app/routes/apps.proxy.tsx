@@ -68,6 +68,75 @@ function computeReadiness(trip: ReadinessTripInput) {
   return { score, buckets };
 }
 
+// Smart Packing v1 (Fase 3, Milestone 4, Club-only) — a deterministic,
+// rule-based list from the two trip signals that are actually structured
+// today: dates (season) and duration (day count). Trip.destination is a
+// free-text field (not a metaobject), and Activity.category is never
+// populated by any current UI flow, so neither can drive generation yet
+// without a larger change — a documented v1 simplification, not an oversight.
+// Season uses calendar month only (no hemisphere data on the trip), so it's
+// Northern-hemisphere-biased; acceptable for a v1 heuristic.
+// Category keys match the ones rodi-packing.liquid already renders labels
+// for (DEFAULT_CATEGORIES there), so generated items group under the same
+// headings as the manually-seeded default template.
+const SMART_BASE_ITEMS: { label: string; category: string }[] = [
+  { label: "Pasaporte / documento de identidad", category: "documents" },
+  { label: "Tarjetas de viaje y seguro médico", category: "documents" },
+  { label: "Efectivo y tarjetas", category: "documents" },
+  { label: "Cargador de celular", category: "tech" },
+  { label: "Adaptador de corriente", category: "tech" },
+  { label: "Power bank", category: "tech" },
+  { label: "Botiquín básico", category: "health" },
+  { label: "Medicamentos personales", category: "health" },
+  { label: "Calzado cómodo para caminar", category: "shoes" },
+];
+
+const SMART_SEASON_ITEMS: Record<string, { label: string; category: string }[]> = {
+  winter: [
+    { label: "Abrigo grueso", category: "clothing" },
+    { label: "Bufanda y guantes", category: "clothing" },
+    { label: "Gorro", category: "clothing" },
+    { label: "Capas térmicas", category: "clothing" },
+  ],
+  spring: [
+    { label: "Chaqueta ligera", category: "clothing" },
+    { label: "Paraguas o impermeable", category: "accessories" },
+  ],
+  summer: [
+    { label: "Ropa ligera y traje de baño", category: "clothing" },
+    { label: "Protector solar", category: "toiletries" },
+    { label: "Gafas de sol", category: "accessories" },
+  ],
+  fall: [
+    { label: "Chaqueta intermedia", category: "clothing" },
+    { label: "Paraguas", category: "accessories" },
+  ],
+};
+
+function seasonFor(date: Date): "winter" | "spring" | "summer" | "fall" {
+  const month = date.getMonth();
+  if (month === 11 || month <= 1) return "winter";
+  if (month <= 4) return "spring";
+  if (month <= 7) return "summer";
+  return "fall";
+}
+
+function buildSmartPackingList(trip: { startDate: Date | null; endDate: Date | null }) {
+  const items = [...SMART_BASE_ITEMS];
+  if (trip.startDate) items.push(...SMART_SEASON_ITEMS[seasonFor(trip.startDate)]);
+
+  let days = 3; // sensible default before the trip has real dates yet
+  if (trip.startDate && trip.endDate) {
+    const diffDays = Math.round((trip.endDate.getTime() - trip.startDate.getTime()) / 86400000);
+    days = Math.max(1, diffDays + 1);
+  }
+  items.push({ label: `Ropa interior (x${days})`, category: "clothing" });
+  items.push({ label: `Calcetines (x${days})`, category: "clothing" });
+  items.push({ label: "Pijama", category: "clothing" });
+
+  return items;
+}
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.public.appProxy(request);
   const customerId = getCustomerId(request);
@@ -335,6 +404,32 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       }
       await db.checklistItem.delete({ where: { id: body.itemId } });
       return Response.json({ ok: true });
+    }
+
+    case "generateSmartPacking": {
+      if (!membership.isClub) {
+        return Response.json({ error: "CLUB_ONLY", feature: "smart_packing" }, { status: 403 });
+      }
+      const trip = await assertTripOwnership(body.tripId, shop, customerId);
+      // Regenerating only ever touches items this generator made itself
+      // (source:"smart") — never the default template or anything the
+      // customer typed in by hand.
+      await db.checklistItem.deleteMany({ where: { tripId: trip.id, source: "smart" } });
+      const items = buildSmartPackingList(trip);
+      await db.checklistItem.createMany({
+        data: items.map((item, i) => ({
+          tripId: trip.id,
+          label: item.label,
+          category: item.category,
+          source: "smart",
+          sortOrder: 1000 + i,
+        })),
+      });
+      const checklist = await db.checklistItem.findMany({
+        where: { tripId: trip.id },
+        orderBy: { sortOrder: "asc" },
+      });
+      return Response.json({ checklist });
     }
 
     case "createExpense": {
