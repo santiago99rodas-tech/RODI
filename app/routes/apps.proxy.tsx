@@ -28,6 +28,46 @@ async function assertTripOwnership(tripId: string, shop: string, customerId: str
   return trip;
 }
 
+// Travel Readiness (Fase 3, Milestone 3) — a 0-100 score computed on the fly
+// from data the trip already has, no new table. Weights match the plan:
+// dates 20%, documents 20%, packing 25%, budget 15%, itinerary 20%. Each
+// bucket's ratio is 0..1 "how complete is this part"; the overall score is
+// the weighted sum. Free members only ever get the number back — the
+// breakdown and recommendations are trimmed server-side, not just hidden in
+// the theme, so a Free member can't read them by calling the proxy directly.
+type ReadinessTripInput = {
+  startDate: Date | null;
+  endDate: Date | null;
+  budgetTotal: number | null;
+  documents: { id: string }[];
+  checklist: { done: boolean }[];
+  days: { activities: { id: string }[] }[];
+};
+
+function computeReadiness(trip: ReadinessTripInput) {
+  const buckets = [
+    { key: "dates", weight: 20, ratio: trip.startDate && trip.endDate ? 1 : 0 },
+    { key: "documents", weight: 20, ratio: Math.min(trip.documents.length / 2, 1) },
+    {
+      key: "packing",
+      weight: 25,
+      ratio: trip.checklist.length
+        ? trip.checklist.filter((c) => c.done).length / trip.checklist.length
+        : 0,
+    },
+    { key: "budget", weight: 15, ratio: trip.budgetTotal != null ? 1 : 0 },
+    {
+      key: "itinerary",
+      weight: 20,
+      ratio: trip.days.length
+        ? trip.days.filter((d) => d.activities.length > 0).length / trip.days.length
+        : 0,
+    },
+  ];
+  const score = Math.round(buckets.reduce((sum, b) => sum + b.ratio * b.weight, 0));
+  return { score, buckets };
+}
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.public.appProxy(request);
   const customerId = getCustomerId(request);
@@ -53,6 +93,25 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       }),
     ]);
     return Response.json({ emergencyContacts, documents });
+  }
+
+  if (tripId && searchParams.get("readiness")) {
+    const trip = await db.trip.findFirst({
+      where: { id: tripId, shop: session.shop, customerId },
+      include: {
+        days: { include: { activities: true } },
+        checklist: true,
+        documents: true,
+      },
+    });
+    if (!trip) return Response.json({ error: "Not found" }, { status: 404 });
+    const { score, buckets } = computeReadiness(trip);
+    const membership = await resolveMembership(session.shop, customerId);
+    if (!membership.isClub) {
+      return Response.json({ score });
+    }
+    const recommendations = buckets.filter((b) => b.ratio < 1).map((b) => b.key);
+    return Response.json({ score, buckets, recommendations });
   }
 
   if (tripId) {
