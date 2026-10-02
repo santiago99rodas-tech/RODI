@@ -119,3 +119,94 @@ export async function projectMembershipToMetafield(
     throw new Error(`metafieldsSet failed for customer ${customerId}: ${JSON.stringify(userErrors)}`);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Manual membership management (admin screen: app/routes/app.memberships.tsx).
+// Support/ops tooling — gift or revoke Club for one customer without waiting
+// on billing (Fase 2). All of these write the Membership row first (the
+// source of truth every server-side limit reads) and then re-project the
+// metafield so the theme agrees with the server.
+//
+// "Set to Free" deliberately KEEPS the row (status FREE, no dates) instead of
+// deleting it: grantPromotionalAccess() never re-grants over an existing row,
+// so a kept row can't be silently handed a fresh promo by a later webhook.
+
+export type ManualMembershipAction =
+  | { kind: "grant"; months: number }
+  | { kind: "expire" }
+  | { kind: "free" };
+
+export async function applyManualMembership(
+  admin: AdminApiContext,
+  shop: string,
+  customerId: string,
+  action: ManualMembershipAction,
+) {
+  const key = { shop_customerId: { shop, customerId } };
+  const now = new Date();
+
+  if (action.kind === "grant") {
+    const data = {
+      status: "PROMOTIONAL_ACCESS",
+      promoStart: now,
+      promoEnd: addMonths(now, action.months),
+      promoSource: "manual_grant",
+      cancelledAt: null,
+    };
+    await db.membership.upsert({ where: key, create: { shop, customerId, ...data }, update: data });
+  } else if (action.kind === "expire") {
+    const past = new Date(now.getTime() - 60 * 1000);
+    const existing = await db.membership.findUnique({ where: key });
+    const data = {
+      status: "EXPIRED",
+      promoEnd: past,
+      // A lapsed paid period must lapse too, or ACTIVE would keep winning in resolveMembership().
+      currentPeriodEnd: existing?.currentPeriodEnd ? past : null,
+      cancelledAt: now,
+      promoSource: existing?.promoSource ?? "manual_expire",
+    };
+    await db.membership.upsert({ where: key, create: { shop, customerId, ...data }, update: data });
+  } else {
+    const data = {
+      status: "FREE",
+      promoStart: null,
+      promoEnd: null,
+      currentPeriodEnd: null,
+      cancelledAt: null,
+      promoSource: "manual_reset",
+    };
+    await db.membership.upsert({ where: key, create: { shop, customerId, ...data }, update: data });
+  }
+
+  if (action.kind === "free") {
+    await clearMembershipMetafield(admin, customerId);
+  } else {
+    await projectMembershipToMetafield(admin, shop, customerId);
+  }
+}
+
+// Removes the projected date so Liquid reads the customer as never-a-member
+// (Free), as opposed to an expired date which reads as "Expired".
+export async function clearMembershipMetafield(admin: AdminApiContext, customerId: string) {
+  const response = await admin.graphql(
+    `#graphql
+      mutation clearClubAccessUntil($metafields: [MetafieldIdentifierInput!]!) {
+        metafieldsDelete(metafields: $metafields) {
+          userErrors { field message }
+        }
+      }`,
+    {
+      variables: {
+        metafields: [
+          { ownerId: `gid://shopify/Customer/${customerId}`, namespace: METAFIELD_NAMESPACE, key: METAFIELD_KEY },
+        ],
+      },
+    },
+  );
+
+  const body = await response.json();
+  const userErrors = body?.data?.metafieldsDelete?.userErrors;
+  if (userErrors?.length) {
+    throw new Error(`metafieldsDelete failed for customer ${customerId}: ${JSON.stringify(userErrors)}`);
+  }
+}
