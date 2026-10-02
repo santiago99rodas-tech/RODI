@@ -79,37 +79,87 @@ function computeReadiness(trip: ReadinessTripInput) {
 // Category keys match the ones rodi-packing.liquid already renders labels
 // for (DEFAULT_CATEGORIES there), so generated items group under the same
 // headings as the manually-seeded default template.
-const SMART_BASE_ITEMS: { label: string; category: string }[] = [
-  { label: "Pasaporte / documento de identidad", category: "documents" },
-  { label: "Tarjetas de viaje y seguro médico", category: "documents" },
-  { label: "Efectivo y tarjetas", category: "documents" },
-  { label: "Cargador de celular", category: "tech" },
-  { label: "Adaptador de corriente", category: "tech" },
-  { label: "Power bank", category: "tech" },
-  { label: "Botiquín básico", category: "health" },
-  { label: "Medicamentos personales", category: "health" },
-  { label: "Calzado cómodo para caminar", category: "shoes" },
+type SmartLocale = "en" | "es" | "fr" | "it";
+type SmartKey =
+  | "passport" | "travelCards" | "cash" | "charger" | "adapter" | "powerbank"
+  | "firstAid" | "meds" | "shoes" | "heavyCoat" | "scarfGloves" | "beanie"
+  | "thermal" | "lightJacket" | "umbrellaRain" | "summerClothes" | "sunscreen"
+  | "sunglasses" | "midJacket" | "umbrella" | "underwear" | "socks" | "pajamas";
+
+const SMART_LABELS: Record<SmartLocale, Record<SmartKey, string>> = {
+  es: {
+    passport: "Pasaporte / documento de identidad", travelCards: "Tarjetas de viaje y seguro médico",
+    cash: "Efectivo y tarjetas", charger: "Cargador de celular", adapter: "Adaptador de corriente",
+    powerbank: "Power bank", firstAid: "Botiquín básico", meds: "Medicamentos personales",
+    shoes: "Calzado cómodo para caminar", heavyCoat: "Abrigo grueso", scarfGloves: "Bufanda y guantes",
+    beanie: "Gorro", thermal: "Capas térmicas", lightJacket: "Chaqueta ligera",
+    umbrellaRain: "Paraguas o impermeable", summerClothes: "Ropa ligera y traje de baño",
+    sunscreen: "Protector solar", sunglasses: "Gafas de sol", midJacket: "Chaqueta intermedia",
+    umbrella: "Paraguas", underwear: "Ropa interior", socks: "Calcetines", pajamas: "Pijama",
+  },
+  en: {
+    passport: "Passport / ID", travelCards: "Travel cards and health insurance",
+    cash: "Cash and cards", charger: "Phone charger", adapter: "Power adapter",
+    powerbank: "Power bank", firstAid: "Basic first-aid kit", meds: "Personal medication",
+    shoes: "Comfortable walking shoes", heavyCoat: "Heavy coat", scarfGloves: "Scarf and gloves",
+    beanie: "Beanie", thermal: "Thermal layers", lightJacket: "Light jacket",
+    umbrellaRain: "Umbrella or raincoat", summerClothes: "Light clothing and swimsuit",
+    sunscreen: "Sunscreen", sunglasses: "Sunglasses", midJacket: "Mid-weight jacket",
+    umbrella: "Umbrella", underwear: "Underwear", socks: "Socks", pajamas: "Pajamas",
+  },
+  fr: {
+    passport: "Passeport / pièce d'identité", travelCards: "Cartes de voyage et assurance santé",
+    cash: "Espèces et cartes", charger: "Chargeur de téléphone", adapter: "Adaptateur secteur",
+    powerbank: "Batterie externe", firstAid: "Trousse de premiers secours", meds: "Médicaments personnels",
+    shoes: "Chaussures confortables pour marcher", heavyCoat: "Manteau épais", scarfGloves: "Écharpe et gants",
+    beanie: "Bonnet", thermal: "Sous-vêtements thermiques", lightJacket: "Veste légère",
+    umbrellaRain: "Parapluie ou imperméable", summerClothes: "Vêtements légers et maillot de bain",
+    sunscreen: "Crème solaire", sunglasses: "Lunettes de soleil", midJacket: "Veste mi-saison",
+    umbrella: "Parapluie", underwear: "Sous-vêtements", socks: "Chaussettes", pajamas: "Pyjama",
+  },
+  it: {
+    passport: "Passaporto / documento d'identità", travelCards: "Carte di viaggio e assicurazione sanitaria",
+    cash: "Contanti e carte", charger: "Caricatore del telefono", adapter: "Adattatore di corrente",
+    powerbank: "Power bank", firstAid: "Kit di pronto soccorso", meds: "Medicinali personali",
+    shoes: "Scarpe comode per camminare", heavyCoat: "Cappotto pesante", scarfGloves: "Sciarpa e guanti",
+    beanie: "Berretto", thermal: "Strati termici", lightJacket: "Giacca leggera",
+    umbrellaRain: "Ombrello o impermeabile", summerClothes: "Abiti leggeri e costume da bagno",
+    sunscreen: "Crema solare", sunglasses: "Occhiali da sole", midJacket: "Giacca di mezza stagione",
+    umbrella: "Ombrello", underwear: "Biancheria intima", socks: "Calzini", pajamas: "Pigiama",
+  },
+};
+
+const SMART_BASE_ITEMS: { key: SmartKey; category: string }[] = [
+  { key: "passport", category: "documents" },
+  { key: "travelCards", category: "documents" },
+  { key: "cash", category: "documents" },
+  { key: "charger", category: "tech" },
+  { key: "adapter", category: "tech" },
+  { key: "powerbank", category: "tech" },
+  { key: "firstAid", category: "health" },
+  { key: "meds", category: "health" },
+  { key: "shoes", category: "shoes" },
 ];
 
-const SMART_SEASON_ITEMS: Record<string, { label: string; category: string }[]> = {
+const SMART_SEASON_ITEMS: Record<string, { key: SmartKey; category: string }[]> = {
   winter: [
-    { label: "Abrigo grueso", category: "clothing" },
-    { label: "Bufanda y guantes", category: "clothing" },
-    { label: "Gorro", category: "clothing" },
-    { label: "Capas térmicas", category: "clothing" },
+    { key: "heavyCoat", category: "clothing" },
+    { key: "scarfGloves", category: "clothing" },
+    { key: "beanie", category: "clothing" },
+    { key: "thermal", category: "clothing" },
   ],
   spring: [
-    { label: "Chaqueta ligera", category: "clothing" },
-    { label: "Paraguas o impermeable", category: "accessories" },
+    { key: "lightJacket", category: "clothing" },
+    { key: "umbrellaRain", category: "accessories" },
   ],
   summer: [
-    { label: "Ropa ligera y traje de baño", category: "clothing" },
-    { label: "Protector solar", category: "toiletries" },
-    { label: "Gafas de sol", category: "accessories" },
+    { key: "summerClothes", category: "clothing" },
+    { key: "sunscreen", category: "toiletries" },
+    { key: "sunglasses", category: "accessories" },
   ],
   fall: [
-    { label: "Chaqueta intermedia", category: "clothing" },
-    { label: "Paraguas", category: "accessories" },
+    { key: "midJacket", category: "clothing" },
+    { key: "umbrella", category: "accessories" },
   ],
 };
 
@@ -121,20 +171,28 @@ function seasonFor(date: Date): "winter" | "spring" | "summer" | "fall" {
   return "fall";
 }
 
-function buildSmartPackingList(trip: { startDate: Date | null; endDate: Date | null }) {
+function normalizeSmartLocale(raw: unknown): SmartLocale {
+  const code = typeof raw === "string" ? raw.toLowerCase().slice(0, 2) : "";
+  return code === "es" || code === "fr" || code === "it" ? code : "en";
+}
+
+function buildSmartPackingList(trip: { startDate: Date | null; endDate: Date | null }, locale: SmartLocale) {
+  const t = SMART_LABELS[locale];
   const items = [...SMART_BASE_ITEMS];
   if (trip.startDate) items.push(...SMART_SEASON_ITEMS[seasonFor(trip.startDate)]);
+
+  const out = items.map((i) => ({ label: t[i.key], category: i.category }));
 
   let days = 3; // sensible default before the trip has real dates yet
   if (trip.startDate && trip.endDate) {
     const diffDays = Math.round((trip.endDate.getTime() - trip.startDate.getTime()) / 86400000);
     days = Math.max(1, diffDays + 1);
   }
-  items.push({ label: `Ropa interior (x${days})`, category: "clothing" });
-  items.push({ label: `Calcetines (x${days})`, category: "clothing" });
-  items.push({ label: "Pijama", category: "clothing" });
+  out.push({ label: `${t.underwear} (x${days})`, category: "clothing" });
+  out.push({ label: `${t.socks} (x${days})`, category: "clothing" });
+  out.push({ label: t.pajamas, category: "clothing" });
 
-  return items;
+  return out;
 }
 
 // Year in Travel (Fase 3, Milestone 5, Club-only) — built from Trip +
@@ -533,7 +591,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       // (source:"smart") — never the default template or anything the
       // customer typed in by hand.
       await db.checklistItem.deleteMany({ where: { tripId: trip.id, source: "smart" } });
-      const items = buildSmartPackingList(trip);
+      const items = buildSmartPackingList(trip, normalizeSmartLocale(body.locale));
       await db.checklistItem.createMany({
         data: items.map((item, i) => ({
           tripId: trip.id,
