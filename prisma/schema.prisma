@@ -310,3 +310,22 @@ model ServiceInquiry {
   @@index([shop, customerId])
   @@index([tripId])
 }
+
+// Transactional emails sent by the app through Resend (see app/emails.server.ts).
+// One row per customer + template: it is both the audit trail and the guard
+// that stops a webhook retry from emailing the same person twice.
+model EmailLog {
+  id         String   @id @default(cuid())
+  shop       String
+  customerId String
+  template   String   // account-ready | welcome-club
+  locale     String?
+  recipient  String?
+  status     String   @default("sending") // sending | sent | failed
+  providerId String?  // Resend message id
+  error      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([shop, customerId, template])
+}

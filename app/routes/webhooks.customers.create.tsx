@@ -1,6 +1,7 @@
 import type { ActionFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import { grantPromotionalAccess, projectMembershipToMetafield } from "../membership.server";
+import { sendAccountReadyEmail } from "../emails.server";
 
 // Grants the launch promo (RODI Club Fase 1) to every new signup and
 // projects it to the customer metafield the theme reads. Not run for
@@ -22,6 +23,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   await grantPromotionalAccess(shop, customerId);
   await projectMembershipToMetafield(admin, shop, customerId);
+
+  // "Your account is ready" email (Resend). Deduplicated per customer and never throws, so a webhook retry cannot
+  // send it twice or fail the delivery.
+  await sendAccountReadyEmail(admin, shop, customerId, payload);
 
   return new Response();
 };

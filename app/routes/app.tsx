@@ -24,6 +24,7 @@ export default function App() {
         <s-link href="/app/membership-backfill">Club launch promo backfill</s-link>
         <s-link href="/app/community-moderation">Community moderation</s-link>
         <s-link href="/app/service-inquiries">RODI Services inquiries</s-link>
+        <s-link href="/app/email">Email (Resend)</s-link>
       </s-app-nav>
       <Outlet />
     </AppProvider>

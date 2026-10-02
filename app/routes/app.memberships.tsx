@@ -4,6 +4,7 @@ import { useFetcher, useLoaderData, useNavigate } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import { applyManualMembership, resolveMembership } from "../membership.server";
+import { sendWelcomeClubEmail } from "../emails.server";
 import db from "../db.server";
 
 // Manual membership management for support/ops. Fase 2 (billing) is paused,
@@ -98,6 +99,16 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       await applyManualMembership(admin, shop, customerId, { kind: "grant", months });
       return { ok: `Granted ${months} month${months === 1 ? "" : "s"} of Club access` };
     }
+    if (intent === "welcome") {
+      // Explicit admin action: emails the customer the Club welcome. Needs an email and an active Club membership.
+      const membership = await resolveMembership(shop, customerId);
+      if (!membership.isClub) return { error: "Only Club members get the welcome email" };
+      const email = String(form.get("email") ?? "");
+      if (!email) return { error: "This customer has no email address" };
+      const result = await sendWelcomeClubEmail(admin, shop, customerId, email);
+      if (result.outcome === "sent") return { ok: `Welcome email sent to ${email}` };
+      return { error: `Welcome email not sent: ${result.detail ?? result.outcome}` };
+    }
     if (intent === "expire") {
       await applyManualMembership(admin, shop, customerId, { kind: "expire" });
       return { ok: "Club access expired" };
@@ -137,6 +148,15 @@ function CustomerRow({ customer, fetcher }: { customer: CustomerRowData; fetcher
               {`Grant ${m} month${m === 1 ? "" : "s"}`}
             </s-button>
           ))}
+          <s-button
+            disabled={busy || !customer.isClub || !customer.email}
+            onClick={() => {
+              if (!window.confirm(`Send the Club welcome email to ${customer.email}?`)) return;
+              submit("welcome", { email: customer.email ?? "" });
+            }}
+          >
+            Send welcome email
+          </s-button>
           <s-button
             tone="critical"
             disabled={busy}

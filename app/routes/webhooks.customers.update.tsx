@@ -1,6 +1,7 @@
 import type { ActionFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import { grantPromotionalAccess, projectMembershipToMetafield } from "../membership.server";
+import { sendAccountReadyEmail } from "../emails.server";
 import db from "../db.server";
 
 // Defensive upsert for a missed customers/create delivery only (Shopify
@@ -22,6 +23,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const customerId = String(payload.id ?? "");
   if (!customerId) return new Response();
 
+  let grantedNow = false;
   const existing = await db.membership.findUnique({ where: { shop_customerId: { shop, customerId } } });
 
   if (!existing) {
@@ -29,12 +31,16 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const looksLikeMissedCreate = createdAt && Date.now() - createdAt.getTime() < RECENT_SIGNUP_WINDOW_MS;
     if (looksLikeMissedCreate) {
       await grantPromotionalAccess(shop, customerId);
+      grantedNow = true;
     } else {
       return new Response(); // old customer, ordinary profile edit — leave at Free, nothing to project
     }
   }
 
   await projectMembershipToMetafield(admin, shop, customerId);
+
+  // Missed customers/create: the signup email still goes out (deduplicated if the create delivery also arrives).
+  if (grantedNow) await sendAccountReadyEmail(admin, shop, customerId, payload);
 
   return new Response();
 };

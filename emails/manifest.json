@@ -1,0 +1,313 @@
+[
+  {
+    "id": "community-share",
+    "title": {
+      "es": "Comparte tus experiencias",
+      "en": "Share your experiences"
+    },
+    "channel": {
+      "type": "app",
+      "trigger": "Campaign or automation (e.g. a few days after a trip ends); audience: Club members, since only Club can post"
+    },
+    "marketing": true,
+    "subject": {
+      "es": "Pregunta, recomienda y comparte con la comunidad",
+      "en": "Ask, recommend and share with the community",
+      "fr": "Posez vos questions, recommandez et partagez avec la communauté",
+      "it": "Chiedi, consiglia e condividi con la community"
+    },
+    "variables": [
+      "shop.url",
+      "unsubscribe_url"
+    ]
+  },
+  {
+    "id": "referral",
+    "title": {
+      "es": "Refiere a un amigo",
+      "en": "Refer a friend"
+    },
+    "channel": {
+      "type": "app",
+      "trigger": "Campaign or automation. Needs a referral feature that does not exist yet (a code per customer). No reward is promised in the copy until one is defined"
+    },
+    "marketing": true,
+    "subject": {
+      "es": "Invita a un amigo a RODI Club",
+      "en": "Invite a friend to RODI Club",
+      "fr": "Invitez un ami à RODI Club",
+      "it": "Invita un amico a RODI Club"
+    },
+    "variables": [
+      "referral_code",
+      "share_url",
+      "shop.url",
+      "unsubscribe_url"
+    ]
+  },
+  {
+    "id": "winback",
+    "title": {
+      "es": "Te extrañamos",
+      "en": "We miss you"
+    },
+    "channel": {
+      "type": "app",
+      "trigger": "Automation: no storefront/app activity for N days (N to be decided)"
+    },
+    "marketing": true,
+    "subject": {
+      "es": "Tu próximo viaje te espera en RODI",
+      "en": "Your next trip is waiting at RODI",
+      "fr": "Votre prochain voyage vous attend chez RODI",
+      "it": "Il tuo prossimo viaggio ti aspetta su RODI"
+    },
+    "variables": [
+      "shop.url",
+      "unsubscribe_url"
+    ]
+  },
+  {
+    "id": "limited-offer",
+    "title": {
+      "es": "Aprovecha esta oportunidad",
+      "en": "Take this opportunity"
+    },
+    "channel": {
+      "type": "app",
+      "trigger": "Campaign (manual); audience: Club members. The offer itself is whatever the sender passes as offer_text"
+    },
+    "marketing": true,
+    "subject": {
+      "es": "Una oportunidad para tu próximo viaje",
+      "en": "An opportunity for your next trip",
+      "fr": "Une opportunité pour votre prochain voyage",
+      "it": "Un'opportunità per il tuo prossimo viaggio"
+    },
+    "variables": [
+      "offer_text (optional)",
+      "cta_url",
+      "shop.url",
+      "unsubscribe_url"
+    ]
+  },
+  {
+    "id": "new-benefits",
+    "title": {
+      "es": "Conoce los nuevos beneficios",
+      "en": "Meet the new benefits"
+    },
+    "channel": {
+      "type": "app",
+      "trigger": "Campaign (manual) when Benefits change; audience: Club members"
+    },
+    "marketing": true,
+    "subject": {
+      "es": "Nuevos beneficios del Club",
+      "en": "New Club benefits",
+      "fr": "Nouveaux avantages du Club",
+      "it": "Nuovi vantaggi del Club"
+    },
+    "variables": [
+      "shop.url",
+      "unsubscribe_url"
+    ]
+  },
+  {
+    "id": "discount-code",
+    "title": {
+      "es": "Tenemos un descuento para ti",
+      "en": "We have a discount for you"
+    },
+    "channel": {
+      "type": "app",
+      "trigger": "Campaign (manual). Needs a real discount code created in Shopify Admin"
+    },
+    "marketing": true,
+    "subject": {
+      "es": "Un descuento para tu próxima compra",
+      "en": "A discount for your next purchase",
+      "fr": "Une remise pour votre prochain achat",
+      "it": "Uno sconto per il tuo prossimo acquisto"
+    },
+    "variables": [
+      "discount_code",
+      "discount_label",
+      "products[]",
+      "cta_url",
+      "shop.url",
+      "unsubscribe_url"
+    ]
+  },
+  {
+    "id": "new-products",
+    "title": {
+      "es": "Descubre los nuevos productos",
+      "en": "Discover the new products"
+    },
+    "channel": {
+      "type": "app",
+      "trigger": "Campaign (manual) when new products launch; products pulled from the catalog"
+    },
+    "marketing": true,
+    "subject": {
+      "es": "Nuevo en RODI",
+      "en": "New at RODI",
+      "fr": "Nouveau chez RODI",
+      "it": "Novità da RODI"
+    },
+    "variables": [
+      "products[]",
+      "cta_url",
+      "shop.url",
+      "unsubscribe_url"
+    ]
+  },
+  {
+    "id": "chapter-launch",
+    "title": {
+      "es": "Descubre el nuevo Chapter",
+      "en": "Discover the new Chapter"
+    },
+    "channel": {
+      "type": "app",
+      "trigger": "Campaign (manual) when a new Chapter is published; data from the Chapter"
+    },
+    "marketing": true,
+    "subject": {
+      "es": "Nuevo Chapter: {{ chapter.name }}",
+      "en": "New Chapter: {{ chapter.name }}",
+      "fr": "Nouveau Chapter : {{ chapter.name }}",
+      "it": "Nuovo Chapter: {{ chapter.name }}"
+    },
+    "variables": [
+      "chapter.name",
+      "chapter.tagline (optional)",
+      "chapter.image (optional)",
+      "chapter.url",
+      "shop.url",
+      "unsubscribe_url"
+    ]
+  },
+  {
+    "id": "abandoned-checkout",
+    "title": {
+      "es": "Tu carrito sigue esperándote",
+      "en": "Your cart is still waiting"
+    },
+    "channel": {
+      "type": "shopify",
+      "template": "Abandoned checkout (Settings > Notifications > Customer notifications > Abandoned checkout)"
+    },
+    "marketing": false,
+    "subject": {
+      "es": "Tu carrito sigue esperándote",
+      "en": "Your cart is still waiting",
+      "fr": "Votre panier vous attend",
+      "it": "Il tuo carrello ti aspetta"
+    },
+    "variables": [
+      "line_items",
+      "url (checkout recovery link)",
+      "shop.url"
+    ]
+  },
+  {
+    "id": "order-confirmation",
+    "title": {
+      "es": "Tu compra fue exitosa",
+      "en": "Your purchase was successful"
+    },
+    "channel": {
+      "type": "shopify",
+      "template": "Order confirmation (Settings > Notifications > Customer notifications > Order confirmation)"
+    },
+    "marketing": false,
+    "subject": {
+      "es": "Tu compra fue exitosa. Pedido {{ order_name }}",
+      "en": "Your purchase was successful. Order {{ order_name }}",
+      "fr": "Votre achat a bien été effectué. Commande {{ order_name }}",
+      "it": "Il tuo acquisto è andato a buon fine. Ordine {{ order_name }}"
+    },
+    "variables": [
+      "order_name",
+      "created_at",
+      "line_items",
+      "subtotal_price",
+      "shipping_price",
+      "total_discounts",
+      "tax_price",
+      "total_price",
+      "shipping_address",
+      "order_status_url",
+      "shop.url"
+    ]
+  },
+  {
+    "id": "welcome-club",
+    "title": {
+      "es": "Bienvenido a RODI Club",
+      "en": "Welcome to RODI Club"
+    },
+    "channel": {
+      "type": "app",
+      "trigger": "When a customer becomes a Club member (promotional access granted, or paid membership starts)"
+    },
+    "marketing": false,
+    "subject": {
+      "es": "Bienvenido a RODI Club",
+      "en": "Welcome to RODI Club",
+      "fr": "Bienvenue chez RODI Club",
+      "it": "Benvenuto in RODI Club"
+    },
+    "variables": [
+      "shop.url"
+    ]
+  },
+  {
+    "id": "account-ready",
+    "title": {
+      "es": "Tu cuenta ya está lista",
+      "en": "Your account is ready"
+    },
+    "channel": {
+      "type": "app",
+      "trigger": "customers/create webhook, right after the complimentary Club access is granted"
+    },
+    "marketing": false,
+    "subject": {
+      "es": "Tu cuenta ya está lista",
+      "en": "Your account is ready",
+      "fr": "Votre compte est prêt",
+      "it": "Il tuo account è pronto"
+    },
+    "variables": [
+      "promo_months",
+      "access_until",
+      "shop.url"
+    ]
+  },
+  {
+    "id": "verification-code",
+    "title": {
+      "es": "Tu código de verificación",
+      "en": "Your verification code"
+    },
+    "channel": {
+      "type": "not-deliverable",
+      "trigger": "Shopify sends the sign-in code for new customer accounts itself and does not let the store change its design. Built here for the day RODI sends its own codes."
+    },
+    "marketing": false,
+    "subject": {
+      "es": "Tu código de verificación",
+      "en": "Your verification code",
+      "fr": "Votre code de vérification",
+      "it": "Il tuo codice di verifica"
+    },
+    "variables": [
+      "code",
+      "expires_in_minutes",
+      "shop.url"
+    ]
+  }
+]
