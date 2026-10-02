@@ -2,6 +2,8 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { resolveMembership } from "../membership.server";
+import { saveNationalities } from "../nationality.server";
+import { CLUB_NATIONALITY_LIMIT, FREE_NATIONALITY_LIMIT, NATIONALITY_NAMES } from "../nationalities";
 
 // Fase 3 Free-tier limits. Not configurable from Admin yet (no admin UI
 // exists in this app) — change these constants and redeploy if they need
@@ -383,7 +385,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { session } = await authenticate.public.appProxy(request);
+  const { session, admin } = await authenticate.public.appProxy(request);
   const customerId = getCustomerId(request);
   if (!session || !customerId) {
     return Response.json({ error: "Sign in required" }, { status: 401 });
@@ -606,6 +608,36 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         orderBy: { sortOrder: "asc" },
       });
       return Response.json({ checklist });
+    }
+
+    // Nationality picker (My Passport). Replaces the customer's whole list. The stored text is the
+    // canonical English name, which Embassy.nationality and Entry Requirement.traveler_nationality
+    // match on. Free keeps one; Club can keep several.
+    case "setNationalities": {
+      const raw = body.nationalities;
+      if (!Array.isArray(raw) || raw.some((v) => typeof v !== "string")) {
+        return Response.json({ error: "Invalid nationalities" }, { status: 400 });
+      }
+      const names = [...new Set(raw.map((v: string) => v.trim()).filter(Boolean))];
+      if (names.some((n) => !NATIONALITY_NAMES.has(n))) {
+        return Response.json({ error: "Unknown nationality" }, { status: 400 });
+      }
+      const limit = membership.isClub ? CLUB_NATIONALITY_LIMIT : FREE_NATIONALITY_LIMIT;
+      if (names.length > limit) {
+        return membership.isClub
+          ? Response.json({ error: "NATIONALITY_LIMIT", limit }, { status: 400 })
+          : Response.json({ error: "CLUB_ONLY", feature: "multiple_nationalities", limit }, { status: 403 });
+      }
+      if (!admin) {
+        return Response.json({ error: "Could not save nationality" }, { status: 500 });
+      }
+      try {
+        await saveNationalities(admin, customerId, names);
+      } catch (err) {
+        console.error("setNationalities failed", err);
+        return Response.json({ error: "Could not save nationality" }, { status: 500 });
+      }
+      return Response.json({ nationalities: names, limit });
     }
 
     case "createExpense": {
