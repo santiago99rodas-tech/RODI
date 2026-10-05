@@ -7,6 +7,7 @@ const sharp = require("sharp");
 const DIR = path.join(__dirname, "..", "..", "New Assets");
 const ts = fs.readFileSync(path.join(__dirname, "..", "app", "nationalities.ts"), "utf8");
 const countries = [...ts.matchAll(/"code": "([A-Z]{2})",\s*"name": "([^"]+)"/g)].map((m) => ({ code: m[1], en: m[2] }));
+countries.push({ code: "EH", en: "Western Sahara" }); // created after the 199-nationality list (a territory, not a passport)
 const norm = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const es = new Intl.DisplayNames(["es"], { type: "region" });
 // Spanish name (normalized) -> country. Include common short forms and the CLDR names.
