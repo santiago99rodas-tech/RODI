@@ -58,7 +58,11 @@ export async function fetchProducts(admin: AdminApiContext, collection?: string)
   const response = collection
     ? await admin.graphql(`#graphql\n query p($handle: String!) { collectionByHandle(handle: $handle) { products(first: 6) { nodes { ${fields} } } } }`, { variables: { handle: collection } })
     : await admin.graphql(`#graphql\n query p { products(first: 6, sortKey: CREATED_AT, reverse: true, query: "status:active") { nodes { ${fields} } } }`);
-  const body = await response.json();
+  const body: any = await response.json();
+  if (body?.errors?.length) {
+    const message = body.errors.map((e: { message?: string }) => e.message).join("; ");
+    throw new Error(/access denied/i.test(message) ? `${message} The app needs the read_products permission: add it to SCOPES in EasyPanel, run shopify app deploy and approve it in Shopify.` : message);
+  }
   const nodes: any[] = collection ? body?.data?.collectionByHandle?.products?.nodes ?? [] : body?.data?.products?.nodes ?? [];
   return nodes
     .filter((p) => p.status === "ACTIVE" && p.featuredImage?.url)
