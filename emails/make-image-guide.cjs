@@ -8,7 +8,6 @@ const R = [];
 const add = (...a) => R.push(a);
 
 // ---- MARCA
-add("1. Marca", "Imagen para compartir en redes", "Vista previa al compartir enlaces (WhatsApp, redes)", "1,91:1", "1200 × 630", "JPG, ≤ 300 KB", "1", "NO existe en este theme: hay que añadir el ajuste (lo hago yo)", "Pendiente: se configura en el theme");
 
 // ---- HOME
 add("2. Inicio", "Hero: video", "Portada, ocupa casi toda la pantalla (92% del alto, máx. 880 px)", "16:9", "1920 × 1080", "MP4 H.264, sin audio, 8–15 s en bucle, ≤ 6 MB", "1", "Hay: rodi-hero.mp4 (190 KB, de prueba)", "Theme → Personalizar → Inicio → sección Hero → Video");
@@ -77,7 +76,7 @@ for (const r of R) {
   md += `| ${r.slice(1).map((c) => String(c).replace(/\|/g, "/")).join(" | ")} |\n`;
 }
 md += "\n## Resumen de cantidades\n\n| Grupo | Qué falta o se debe reemplazar |\n|---|---|\n";
-md += "| Marca | 1 por entregar: la imagen para compartir en redes (el favicon ya está hecho con la R sobre fondo marfil; los logos de RODI se quedan como están) |\n";
+md += "| Marca | Nada pendiente: favicon e imagen para compartir ya están hechos (provisionales con la R y el lema) y los logos de RODI se quedan |\n";
 md += "| Inicio | 7: video, imagen de respaldo, manifiesto, 3 del Journal, fondo sin sesión |\n";
 md += "| Banners del Club | 15 archivos distintos (o 19 si cada página tiene el suyo) |\n";
 md += "| Tienda y Chapters | 10: 9 fotos + 1 banner de carrito |\n";
@@ -86,6 +85,6 @@ md += "| Destinos y contenido | 197 países sin foto (mínimo 20 para lanzar), 8
 md += "| Beneficios | 4 logos nuevos (los 5 existentes se quedan) |\n";
 md += "| Otros | 1 fondo de la página de contraseña |\n";
 md += "| Correos | 24: 16 iconos, 5 fotos grandes, 3 miniaturas (el logo se queda) |\n";
-md += "\n**Mínimo para lanzar sin que se note lo provisional:** imagen para compartir, video y hero de inicio, banners del Club, fotos reales de producto, 8 fotos de servicios, 20 países, 4 logos de herramientas y las 5 fotos grandes de correos.\n";
+md += "\n**Mínimo para lanzar sin que se note lo provisional:** video y hero de inicio, banners del Club, fotos reales de producto, 8 fotos de servicios, 20 países, 4 logos de herramientas y las 5 fotos grandes de correos.\n";
 fs.writeFileSync(path.join(OUT, "RODI-guia-de-imagenes-v2.md"), md);
 console.log("filas:", R.length, "| md:", md.length, "caracteres");
