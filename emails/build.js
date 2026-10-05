@@ -52,6 +52,13 @@ const write = (file, text) => {
       write(out("dist", lang, `${e.id}.html`), html);
       const data = { ...COMMON, ...e.sample };
       write(out("preview", lang, `${e.id}.html`), await engine.parseAndRender(html, data));
+      // Guard: with only the data every send must have (no optional fields), nothing may stay unresolved.
+      if (e.channel.type === "app") {
+        const { cta_url, offer_text, ...required } = { ...COMMON, ...e.sample };
+        const bare = await engine.parseAndRender(html, required);
+        const left = bare.match(/{{[^}]*}}|{%[^%]*%}/g);
+        if (left) throw new Error(`${e.id}/${lang}: unresolved Liquid with required data only: ${left.slice(0, 3).join(" ")}`);
+      }
     }
     manifest.push({
       id: e.id,

@@ -26,7 +26,7 @@ const limitedOffer = {
       K.hero({ src: "rodi-email-hero-barcelona.jpg", alt: "" }),
       K.headline(S.h1),
       K.para(`{{ offer_text | default: "${S.pDefault}" }}`, { max: 460 }),
-      K.button({ label: S.cta, url: "{{ cta_url | default: '" + T.link.benefits + "' }}" }),
+      K.button({ label: S.cta, url: "{% if cta_url %}{{ cta_url }}{% else %}" + T.link.benefits + "{% endif %}" }),
       K.columns({
         items: [
           { icon: "globe", title: S.cols[0][0], text: S.cols[0][1] },
@@ -85,7 +85,7 @@ const discountCode = {
       K.codeBox({ label: S.label, code: "{{ discount_code }}", spacing: 9, size: 34 }),
       K.note(S.note),
       K.productTiles({ limit: 3, padTop: 30 }),
-      K.button({ label: S.cta, url: "{{ cta_url | default: '" + T.link.shop + "' }}", padTop: 28, radius: 6 }),
+      K.button({ label: S.cta, url: "{% if cta_url %}{{ cta_url }}{% else %}" + T.link.shop + "{% endif %}", padTop: 28, radius: 6 }),
       K.footer({ lang, quote: tagline(lang), nav: false, wordmark: false, marketing: true }),
     ].join("\n");
   },
@@ -108,7 +108,7 @@ const newProducts = {
       K.header({ tagline: tagline(lang), rule: true }),
       K.heroOverlay({ src: "rodi-email-hero-roma.jpg", height: 340, html: overlay }),
       K.productCards({ limit: 3, badge: S.badge, padTop: 30 }),
-      K.button({ label: S.cta, url: "{{ cta_url | default: '" + T.link.shop + "' }}", padTop: 32, radius: 2 }),
+      K.button({ label: S.cta, url: "{% if cta_url %}{{ cta_url }}{% else %}" + T.link.shop + "{% endif %}", padTop: 32, radius: 2 }),
       K.footer({ lang, quote: tagline(lang), nav: false, marketing: true }),
     ].join("\n");
   },
