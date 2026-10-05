@@ -146,8 +146,8 @@ export async function createCampaign(
   const spec = specFor(input.template);
   if (!spec) return { error: "Unknown email" };
   const products = spec.usesProducts ? await fetchProducts(admin, input.fields.collection) : [];
-  if (spec.usesProducts && products.length < 3) {
-    return { error: input.fields.collection ? "That collection has fewer than 3 active products with images" : "The shop needs at least 3 active products with images" };
+  if (spec.usesProducts && products.length < 1) {
+    return { error: input.fields.collection ? "That collection has no active products with images" : "The shop has no active products with images" };
   }
   const audience = await fetchAudience(admin, shop, input.audience);
   if (audience.length === 0) return { error: "Nobody in that audience has accepted marketing emails" };

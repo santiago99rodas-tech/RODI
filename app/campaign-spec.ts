@@ -23,7 +23,7 @@ export type CampaignTemplateSpec = {
   label: string;
   description: string;
   fields: CampaignField[];
-  // Pulls up to 3 products from the shop's catalog (images and links come from the products themselves).
+  // Pulls up to 3 products (at least 1) from the shop's catalog (images and links come from the products themselves).
   usesProducts: boolean;
 };
 
@@ -62,7 +62,7 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplateSpec[] = [
   {
     id: "discount-code",
     label: "Discount code",
-    description: "Shows a discount code and three products. The code must already exist in Shopify Admin > Discounts.",
+    description: "Shows a discount code and up to three products. The code must already exist in Shopify Admin > Discounts.",
     fields: [
       { key: "discount_code", label: "Discount code", required: true, placeholder: "VIAJA20", help: "Letters, numbers, - and _ only." },
       { key: "discount_label", label: "What it gives", required: true, placeholder: "20%", help: "Shown as \"get 20% off\"." },
@@ -74,7 +74,7 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplateSpec[] = [
   {
     id: "new-products",
     label: "New products",
-    description: "Shows three products from the catalog.",
+    description: "Shows up to three products from the catalog.",
     fields: [
       { key: "cta_url", label: "Button link (optional)", placeholder: "https://rodiclub.com/pages/objects" },
       { key: "collection", label: "Collection handle (optional)", placeholder: "Leave empty to use the newest products" },

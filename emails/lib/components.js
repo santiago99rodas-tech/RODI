@@ -179,8 +179,8 @@ function rows({ items, padTop = 28 }) {
 function productTiles({ limit = 3, padTop = 32 } = {}) {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="px" style="padding:${padTop}px 22px 0;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-{% for p in products limit: ${limit} %}<td class="col{% if forloop.last %} col-last{% endif %}" width="33%" valign="top" align="center" style="width:33%;padding:0 10px;">
-<a href="{{ p.url }}" style="text-decoration:none;color:${c.ink};"><img src="{{ p.image }}" width="170" alt="{{ p.title | escape }}" style="width:100%;max-width:200px;height:auto;margin:0 auto 14px;border-radius:4px;">
+{% assign pn = products.size %}{% if pn > 3 %}{% assign pn = 3 %}{% endif %}{% assign cw = 100 | divided_by: pn %}{% for p in products limit: ${limit} %}<td class="col{% if forloop.last %} col-last{% endif %}" width="{{ cw }}%" valign="top" align="center" style="width:{{ cw }}%;padding:0 10px;">
+<a href="{{ p.url }}" style="text-decoration:none;color:${c.ink};"><img src="{{ p.image }}" width="170" alt="{{ p.title | escape }}" style="width:100%;max-width:{% if pn == 1 %}320{% elsif pn == 2 %}240{% else %}200{% endif %}px;height:auto;margin:0 auto 14px;border-radius:4px;">
 <div style="font-family:${f.body};font-size:11.5px;font-weight:500;letter-spacing:2.6px;text-transform:uppercase;line-height:1.7;color:${c.ink};">{{ p.title | escape }}</div>
 <div style="padding-top:6px;font-family:${f.body};font-size:20px;color:${c.gold};">&rarr;</div></a></td>{% endfor %}
 </tr></table></td></tr></table>`;
@@ -189,8 +189,8 @@ function productTiles({ limit = 3, padTop = 32 } = {}) {
 function productCards({ limit = 3, badge = "", padTop = 28 } = {}) {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="px" style="padding:${padTop}px 22px 0;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-{% for p in products limit: ${limit} %}<td class="col{% if forloop.last %} col-last{% endif %}" width="33%" valign="top" align="center" style="width:33%;padding:0 8px;">
-<a href="{{ p.url }}" style="text-decoration:none;color:${c.ink};"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${c.soft}" style="background:${c.soft};"><tr><td><img src="{{ p.image }}" width="170" alt="{{ p.title | escape }}" style="width:100%;height:auto;"></td></tr></table>
+{% assign pn = products.size %}{% if pn > 3 %}{% assign pn = 3 %}{% endif %}{% assign cw = 100 | divided_by: pn %}{% for p in products limit: ${limit} %}<td class="col{% if forloop.last %} col-last{% endif %}" width="{{ cw }}%" valign="top" align="center" style="width:{{ cw }}%;padding:0 8px;">
+<a href="{{ p.url }}" style="text-decoration:none;color:${c.ink};"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${c.soft}" style="background:${c.soft};max-width:{% if pn == 1 %}340{% elsif pn == 2 %}270{% else %}230{% endif %}px;margin:0 auto;"><tr><td><img src="{{ p.image }}" width="170" alt="{{ p.title | escape }}" style="width:100%;height:auto;"></td></tr></table>
 ${badge ? `<div style="padding-top:14px;font-family:${f.body};font-size:10.5px;font-weight:600;letter-spacing:2.6px;text-transform:uppercase;color:${c.gold};">${badge}</div>` : ""}
 <div style="padding-top:6px;font-family:${f.heading};font-size:21px;line-height:1.2;color:${c.ink};">{{ p.title | escape }}</div>
 <div style="padding-top:6px;font-family:${f.body};font-size:13px;line-height:1.6;color:#6B6862;">{{ p.description | strip_html | truncatewords: 8 }}</div></a></td>{% endfor %}

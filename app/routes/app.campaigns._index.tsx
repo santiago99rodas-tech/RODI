@@ -46,7 +46,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
 
     const products = specFor(template)!.usesProducts ? await fetchProducts(admin, checked.fields.collection) : [];
-    if (specFor(template)!.usesProducts && products.length < 3) return { error: "Needs at least 3 active products with images (check the collection handle)" };
+    if (specFor(template)!.usesProducts && products.length < 1) return { error: "No active products with images found (check the collection handle)" };
     const params: CampaignParams = { fields: checked.fields, products };
     const locale = normalizeLocale(String(form.get("locale") ?? ""));
 
