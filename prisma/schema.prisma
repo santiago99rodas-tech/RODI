@@ -329,3 +329,37 @@ model EmailLog {
 
   @@unique([shop, customerId, template])
 }
+
+// Marketing campaigns sent from the app through Resend (Admin > Campaigns). A campaign snapshots its audience
+// (CampaignRecipient rows) when it is prepared, so progress survives restarts and a recipient can never be mailed twice.
+model Campaign {
+  id         String              @id @default(cuid())
+  shop       String
+  template   String              // one of the marketing templates in emails/
+  params     String              // JSON: copy fields, discount code, chapter, product snapshot
+  audience   String              // subscribed | club
+  status     String              @default("draft") // draft | sending | sent | cancelled
+  total      Int                 @default(0)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  recipients CampaignRecipient[]
+
+  @@index([shop, createdAt])
+}
+
+model CampaignRecipient {
+  id         String   @id @default(cuid())
+  campaignId String
+  customerId String
+  email      String
+  locale     String
+  status     String   @default("pending") // pending | sent | failed | skipped
+  providerId String?
+  error      String?
+  updatedAt  DateTime @updatedAt
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, customerId])
+  @@index([campaignId, status])
+  @@index([customerId])
+}

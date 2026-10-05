@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { Liquid } from "liquidjs";
+import type { CampaignTemplateId } from "./campaign-spec";
 
 // Renders the built email templates from ./emails (see emails/README.md): the same Liquid files that are installed in
 // Shopify notifications, filled with the data the app has. Kept free of database imports so it can be exercised alone.
@@ -8,6 +9,7 @@ import { Liquid } from "liquidjs";
 export const EMAIL_LOCALES = ["es", "en", "fr", "it"] as const;
 export type EmailLocale = (typeof EMAIL_LOCALES)[number];
 export type AppEmailTemplate = "account-ready" | "welcome-club";
+export type EmailTemplateId = AppEmailTemplate | CampaignTemplateId;
 
 const engine = new Liquid({ strictVariables: false });
 const templateCache = new Map<string, string>();
@@ -32,7 +34,7 @@ export function formatEmailDate(date: Date, locale: EmailLocale): string {
   return locale === "fr" ? text.replace(/^1 /, "1er ") : text; // French writes the first of the month as "1er"
 }
 
-function readTemplate(locale: EmailLocale, template: AppEmailTemplate): string {
+function readTemplate(locale: EmailLocale, template: EmailTemplateId): string {
   const key = `${locale}/${template}`;
   const cached = useCache() ? templateCache.get(key) : undefined;
   if (cached) return cached;
@@ -41,7 +43,7 @@ function readTemplate(locale: EmailLocale, template: AppEmailTemplate): string {
   return html;
 }
 
-function readSubject(locale: EmailLocale, template: AppEmailTemplate): string {
+function readSubject(locale: EmailLocale, template: EmailTemplateId): string {
   if (!manifestCache || !useCache()) {
     manifestCache = JSON.parse(fs.readFileSync(path.join(emailsRoot(), "manifest.json"), "utf8"));
   }
@@ -51,13 +53,16 @@ function readSubject(locale: EmailLocale, template: AppEmailTemplate): string {
 }
 
 export async function renderEmail(
-  template: AppEmailTemplate,
+  template: EmailTemplateId,
   locale: EmailLocale,
   data: Record<string, unknown> = {},
+  // The subject is plain text, not HTML, so it must not receive HTML-escaped values.
+  subjectData: Record<string, unknown> = data,
 ): Promise<{ subject: string; html: string }> {
-  const context = { shop: { url: storefrontUrl(), name: "RODI Club" }, ...data };
+  const shop = { url: storefrontUrl(), name: "RODI Club" };
+  const context = { shop, ...data };
   const [subject, html] = await Promise.all([
-    engine.parseAndRender(readSubject(locale, template), context),
+    engine.parseAndRender(readSubject(locale, template), { shop, ...subjectData }),
     engine.parseAndRender(readTemplate(locale, template), context),
   ]);
   return { subject: subject.trim(), html };

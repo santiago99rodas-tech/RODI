@@ -60,3 +60,17 @@ One-time setup (done by a person, in this order):
 4. Admin > Email (Resend) shows the status and sends a test of each template to any address.
 
 Until `RESEND_API_KEY` and `EMAIL_FROM` exist, sending is skipped (and logged); nothing breaks.
+## Campaigns (Admin > Campaigns)
+
+The 7 marketing emails (everything except Refer a friend, which has no referral feature behind it) can be sent from the app:
+pick the email, fill its fields (offer text, discount code, chapter, collection...), preview, send a test to yourself, then
+"Prepare campaign". Preparing snapshots the audience; nothing is sent until "Send" is pressed on the next screen, which sends
+in batches of 50 with a progress counter ("Resume sending" continues after a closed tab, nobody is mailed twice).
+
+- **Audience:** only customers whose email marketing consent in Shopify is *subscribed* (optionally only Club members), one
+  email per address, each in their own language (unsupported languages get `EMAIL_DEFAULT_LOCALE`).
+- **Unsubscribe:** every campaign email carries a signed link (and `List-Unsubscribe` one-click headers) to `/unsubscribe`
+  on the app, which sets the customer to *unsubscribed* in Shopify and skips them in any campaign still queued.
+- **Resend limits:** the free plan allows 100 emails a day and 3,000 a month. Over that, batches come back as failed and
+  can be retried with "Retry failed" the next day, or move to a paid plan.
+- Discount codes must already exist in Shopify Admin > Discounts; the email only displays them.

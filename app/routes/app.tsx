@@ -25,6 +25,7 @@ export default function App() {
         <s-link href="/app/community-moderation">Community moderation</s-link>
         <s-link href="/app/service-inquiries">RODI Services inquiries</s-link>
         <s-link href="/app/email">Email (Resend)</s-link>
+        <s-link href="/app/campaigns">Campaigns</s-link>
       </s-app-nav>
       <Outlet />
     </AppProvider>
