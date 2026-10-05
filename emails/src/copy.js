@@ -382,6 +382,7 @@ const COPY = {
 
   "abandoned-checkout": {
     es: {
+      why: "Recibes este correo porque dejaste productos en tu carrito de RODI.",
       subject: "Tu carrito sigue esperándote",
       preheader: "Completa tu compra y prepárate para tu próxima aventura.",
       h1: "Tu carrito sigue esperándote",
@@ -392,6 +393,7 @@ const COPY = {
     en: {
       subject: "Your cart is still waiting",
       preheader: "Complete your purchase and get ready for your next adventure.",
+      why: "You are receiving this email because you left items in your RODI cart.",
       h1: "Your cart is still waiting",
       p: "You still have special pieces in your cart. Complete your purchase and get ready for your next adventure.",
       cta: "Back to my cart",
@@ -400,6 +402,7 @@ const COPY = {
     fr: {
       subject: "Votre panier vous attend",
       preheader: "Finalisez votre achat et préparez votre prochaine aventure.",
+      why: "Vous recevez cet e-mail car vous avez laissé des articles dans votre panier RODI.",
       h1: "Votre panier vous attend",
       p: "Il vous reste des articles dans votre panier. Finalisez votre achat et préparez votre prochaine aventure.",
       cta: "Retourner au panier",
@@ -408,6 +411,7 @@ const COPY = {
     it: {
       subject: "Il tuo carrello ti aspetta",
       preheader: "Completa l'acquisto e preparati alla tua prossima avventura.",
+      why: "Ricevi questa email perché hai lasciato degli articoli nel carrello RODI.",
       h1: "Il tuo carrello ti aspetta",
       p: "Hai ancora degli articoli nel carrello. Completa l'acquisto e preparati alla tua prossima avventura.",
       cta: "Torna al carrello",

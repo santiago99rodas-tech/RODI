@@ -363,3 +363,21 @@ model CampaignRecipient {
   @@index([campaignId, status])
   @@index([customerId])
 }
+
+// Abandoned-cart reminders sent by the app (see app/abandoned-carts.server.ts). One row per checkout: it records the
+// result and guarantees a cart is emailed at most once.
+model AbandonedCartLog {
+  id         String   @id @default(cuid())
+  shop       String
+  checkoutId String
+  customerId String?
+  email      String
+  status     String   @default("sending") // sending | sent | failed
+  providerId String?
+  error      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([shop, checkoutId])
+  @@index([shop, email, createdAt])
+}

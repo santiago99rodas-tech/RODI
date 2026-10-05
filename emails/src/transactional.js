@@ -26,11 +26,11 @@ function totalsRow(label, value, { bold = false } = {}) {
 const abandonedCheckout = {
   id: "abandoned-checkout",
   title: { es: "Tu carrito sigue esperándote", en: "Your cart is still waiting" },
-  channel: { type: "shopify", template: "Abandoned checkout (Settings > Notifications > Customer notifications > Abandoned checkout)" },
-  marketing: false,
+  channel: { type: "app", trigger: "Scheduled job in the app (app/abandoned-carts.server.ts): carts abandoned for 1 hour or more, customers subscribed to marketing, one email per cart" },
+  marketing: true,
   subject: all("abandoned-checkout", "subject"),
   preheader: all("abandoned-checkout", "preheader"),
-  variables: ["line_items", "url (checkout recovery link)", "shop.url"],
+  variables: ["line_items", "url (checkout recovery link)", "currency", "unsubscribe_url", "shop.url"],
   sample: {},
   build(lang) {
     const S = copy("abandoned-checkout", lang);
@@ -46,7 +46,7 @@ const abandonedCheckout = {
       lineItems({ showQty: false }),
       K.button({ label: S.cta, url: "{{ url }}", radius: 8, wide: false, padTop: 28 }),
       trust,
-      K.footer({ lang, quote: "", nav: false, marketing: false }),
+      K.footer({ lang, quote: "", nav: false, marketing: true, why: S.why }),
     ].join("\n");
   },
 };

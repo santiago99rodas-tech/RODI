@@ -8,10 +8,27 @@ import type { CampaignTemplateId } from "./campaign-spec";
 
 export const EMAIL_LOCALES = ["es", "en", "fr", "it"] as const;
 export type EmailLocale = (typeof EMAIL_LOCALES)[number];
-export type AppEmailTemplate = "account-ready" | "welcome-club";
+export type AppEmailTemplate = "account-ready" | "welcome-club" | "abandoned-checkout";
 export type EmailTemplateId = AppEmailTemplate | CampaignTemplateId;
 
 const engine = new Liquid({ strictVariables: false });
+// The cart/order templates are written for Shopify's Liquid, so the filters they use are provided here too.
+// Prices arrive in cents, as in Shopify; the currency code comes from the data ("currency").
+engine.registerFilter("img_url", (value: unknown, size?: string) => {
+  const url = typeof value === "string" ? value : (value as { image?: string } | null)?.image;
+  if (!url) return "";
+  const width = (parseInt(String(size ?? "").split("x")[0], 10) || 160) * 2;
+  return `${url}${url.includes("?") ? "&" : "?"}width=${width}`;
+});
+engine.registerFilter("money_with_currency", function (this: any, cents: unknown) {
+  const currency = String(this.context.getSync(["currency"]) || "USD");
+  const locale = String(this.context.getSync(["locale"]) || "en");
+  try {
+    return `${new Intl.NumberFormat(locale, { style: "currency", currency, currencyDisplay: "narrowSymbol" }).format(Number(cents ?? 0) / 100)} ${currency}`;
+  } catch {
+    return `${(Number(cents ?? 0) / 100).toFixed(2)} ${currency}`;
+  }
+});
 const templateCache = new Map<string, string>();
 let manifestCache: { id: string; subject: Record<string, string> }[] | null = null;
 
@@ -60,7 +77,7 @@ export async function renderEmail(
   subjectData: Record<string, unknown> = data,
 ): Promise<{ subject: string; html: string }> {
   const shop = { url: storefrontUrl(), name: "RODI Club" };
-  const context = { shop, ...data };
+  const context = { shop, locale, ...data };
   const [subject, html] = await Promise.all([
     engine.parseAndRender(readSubject(locale, template), { shop, ...subjectData }),
     engine.parseAndRender(readTemplate(locale, template), context),

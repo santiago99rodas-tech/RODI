@@ -196,10 +196,10 @@
       "en": "Your cart is still waiting"
     },
     "channel": {
-      "type": "shopify",
-      "template": "Abandoned checkout (Settings > Notifications > Customer notifications > Abandoned checkout)"
+      "type": "app",
+      "trigger": "Scheduled job in the app (app/abandoned-carts.server.ts): carts abandoned for 1 hour or more, customers subscribed to marketing, one email per cart"
     },
-    "marketing": false,
+    "marketing": true,
     "subject": {
       "es": "Tu carrito sigue esperándote",
       "en": "Your cart is still waiting",
@@ -209,6 +209,8 @@
     "variables": [
       "line_items",
       "url (checkout recovery link)",
+      "currency",
+      "unsubscribe_url",
       "shop.url"
     ]
   },

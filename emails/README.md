@@ -74,3 +74,12 @@ in batches of 50 with a progress counter ("Resume sending" continues after a clo
 - **Resend limits:** the free plan allows 100 emails a day and 3,000 a month. Over that, batches come back as failed and
   can be retried with "Retry failed" the next day, or move to a paid plan.
 - Discount codes must already exist in Shopify Admin > Discounts; the email only displays them.
+## Abandoned carts (sent by the app, not by Shopify)
+
+This store uses Shopify's new abandoned-checkout automation, which takes no custom HTML, so the RODI-designed
+`abandoned-checkout` email is sent by the app instead (`app/abandoned-carts.server.ts`, Admin > Abandoned carts).
+A job runs every 10 minutes while `ABANDONED_CART_ENABLED=true`: it asks Shopify for abandoned checkouts and emails the ones
+left at least `ABANDONED_CART_DELAY_MINUTES` (60) ago and at most `ABANDONED_CART_MAX_AGE_HOURS` (48) ago, once per cart, only
+to customers subscribed to marketing emails (`ABANDONED_CART_AUDIENCE=all` to include everyone), skipping customers who
+ordered since or got a cart email in the last 7 days. Guest checkouts without a customer record cannot be emailed.
+Needs the `read_orders` scope. Turn off Shopify's own automation (Marketing > Automations) before enabling the job.

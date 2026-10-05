@@ -22,6 +22,7 @@ export async function sendEmail(input: {
   subject: string;
   html: string;
   idempotencyKey?: string;
+  headers?: Record<string, string>;
 }): Promise<SendResult> {
   const key = process.env.RESEND_API_KEY;
   const { from, replyTo } = resendConfig();
@@ -36,7 +37,7 @@ export async function sendEmail(input: {
         "Content-Type": "application/json",
         ...(input.idempotencyKey ? { "Idempotency-Key": input.idempotencyKey } : {}),
       },
-      body: JSON.stringify({ from, to: [input.to], reply_to: replyTo, subject: input.subject, html: input.html }),
+      body: JSON.stringify({ from, to: [input.to], reply_to: replyTo, subject: input.subject, html: input.html, headers: input.headers }),
     });
     const body = (await response.json().catch(() => ({}))) as { id?: string; message?: string; name?: string };
     if (!response.ok || !body.id) {

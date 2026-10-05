@@ -212,7 +212,7 @@ function divider(padTop = 40, inset = 40) {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding:${padTop}px ${inset}px 0;"><div style="height:1px;background:${c.gold};opacity:.55;font-size:0;line-height:0;">&nbsp;</div></td></tr></table>`;
 }
 
-function footer({ lang, quote, nav = true, marketing = false, wordmark = true, minimal = false }) {
+function footer({ lang, quote, nav = true, marketing = false, wordmark = true, minimal = false, why }) {
   const t = FOOT[lang];
   const links = [T.link.destinations, T.link.experiences, T.link.inspiration, T.link.club];
   const navHtml = nav
@@ -223,7 +223,7 @@ function footer({ lang, quote, nav = true, marketing = false, wordmark = true, m
   const legal = `<div style="padding-top:16px;font-family:${f.body};font-size:11px;line-height:1.9;color:${c.muted};">
 &copy; {{ 'now' | date: '%Y' }} RODI Club. ${t.rights}<br>
 <a href="${T.link.privacy}" style="color:${c.muted};">${t.privacy}</a> &nbsp;|&nbsp; <a href="${T.link.terms}" style="color:${c.muted};">${t.terms}</a> &nbsp;|&nbsp; <a href="${T.link.contact}" style="color:${c.muted};">${t.support}</a>${marketing ? ` &nbsp;|&nbsp; <a href="{{ unsubscribe_url }}" style="color:${c.muted};">${t.unsub}</a>` : ""}
-${marketing ? `<br><span style="font-size:10.5px;">${t.why}</span>` : ""}
+${marketing ? `<br><span style="font-size:10.5px;">${why || t.why}</span>` : ""}
 </div>`;
   void minimal;
   return `${divider(44)}

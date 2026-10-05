@@ -5,8 +5,12 @@ import { createReadableStreamFromReadable } from "@react-router/node";
 import { type EntryContext } from "react-router";
 import { isbot } from "isbot";
 import { addDocumentResponseHeaders } from "./shopify.server";
+import { startAbandonedCartScheduler } from "./abandoned-carts.server";
 
 export const streamTimeout = 5000;
+
+// Abandoned-cart reminders run on a timer inside the server process; the job itself is off unless ABANDONED_CART_ENABLED=true.
+startAbandonedCartScheduler();
 
 export default async function handleRequest(
   request: Request,
