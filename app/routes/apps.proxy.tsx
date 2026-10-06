@@ -3,6 +3,7 @@ import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { resolveMembership } from "../membership.server";
 import { saveNationalities } from "../nationality.server";
+import { SavedCountriesFailure, setCountrySaved, topFavorites } from "../saved-countries.server";
 import { CLUB_NATIONALITY_LIMIT, FREE_NATIONALITY_LIMIT, NATIONALITY_NAMES } from "../nationalities";
 
 // Fase 3 Free-tier limits. Not configurable from Admin yet (no admin UI
@@ -264,6 +265,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       take: 50,
     });
     return Response.json({ recommendations });
+  }
+
+  // Member favorites ranking is public too: only per-country save counts, never who saved what.
+  if (searchParams.get("favorites")) {
+    return Response.json({ favorites: await topFavorites(session.shop) });
   }
 
   const customerId = getCustomerId(request);
@@ -638,6 +644,24 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         return Response.json({ error: "Could not save nationality" }, { status: 500 });
       }
       return Response.json({ nationalities: names, limit });
+    }
+
+    // Save / unsave a destination (country page and Destinations cards). Open to every signed-in member.
+    case "setCountrySaved": {
+      if (!admin) return Response.json({ error: "Could not save destination" }, { status: 500 });
+      try {
+        const result = await setCountrySaved(admin, shop, customerId, body.handle, body.id, body.saved === true);
+        return Response.json(result);
+      } catch (err) {
+        if (err instanceof SavedCountriesFailure && err.code === "INVALID_COUNTRY") {
+          return Response.json({ error: "Unknown destination" }, { status: 400 });
+        }
+        if (err instanceof SavedCountriesFailure && err.code === "LIMIT") {
+          return Response.json({ error: "SAVED_LIMIT" }, { status: 400 });
+        }
+        console.error("setCountrySaved failed", err);
+        return Response.json({ error: "Could not save destination" }, { status: 500 });
+      }
     }
 
     case "createExpense": {

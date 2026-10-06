@@ -381,3 +381,17 @@ model AbandonedCartLog {
   @@unique([shop, checkoutId])
   @@index([shop, email, createdAt])
 }
+
+// A member saving a destination (country page / Destinations cards). The customer's own list lives in the
+// custom.saved_countries metafield (Liquid reads it); this table exists so the app can count saves per country
+// for the "Member favorites" ranking, which Liquid cannot do across customers.
+model CountrySave {
+  id            String   @id @default(cuid())
+  shop          String
+  customerId    String
+  countryHandle String
+  createdAt     DateTime @default(now())
+
+  @@unique([shop, customerId, countryHandle])
+  @@index([shop, countryHandle])
+}
