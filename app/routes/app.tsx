@@ -27,6 +27,7 @@ export default function App() {
         <s-link href="/app/email">Email (Resend)</s-link>
         <s-link href="/app/campaigns">Campaigns</s-link>
         <s-link href="/app/abandoned-carts">Abandoned carts</s-link>
+        <s-link href="/app/backups">Database backups</s-link>
       </s-app-nav>
       <Outlet />
     </AppProvider>

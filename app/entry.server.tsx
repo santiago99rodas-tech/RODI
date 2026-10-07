@@ -6,11 +6,15 @@ import { type EntryContext } from "react-router";
 import { isbot } from "isbot";
 import { addDocumentResponseHeaders } from "./shopify.server";
 import { startAbandonedCartScheduler } from "./abandoned-carts.server";
+import { startBackupScheduler } from "./backup.server";
 
 export const streamTimeout = 5000;
 
 // Abandoned-cart reminders run on a timer inside the server process; the job itself is off unless ABANDONED_CART_ENABLED=true.
 startAbandonedCartScheduler();
+
+// Database snapshots (kept in the persistent volume); BACKUP_ENABLED=false turns it off.
+startBackupScheduler();
 
 export default async function handleRequest(
   request: Request,
