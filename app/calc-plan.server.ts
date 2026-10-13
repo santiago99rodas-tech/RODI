@@ -157,7 +157,7 @@ export function sanitizePlan(raw: unknown): { ok: true; plan: CalcPlan } | { ok:
   for (const t of arr(r.trav, 12)) {
     if (!t || typeof t !== "object") continue;
     const child = t.k === "c";
-    const age = child ? int(t.age, 0, 11, 6) : null;
+    const age = child && t.age !== null && t.age !== undefined && t.age !== "" ? int(t.age, 0, 11, 0) : null;
     trav.push({ n: text(t.n, 40), k: child ? "c" : "a", age, w: child ? int(t.w, 0, 100, 60) : 100 });
   }
   if (!trav.length) trav.push({ n: "", k: "a", age: null, w: 100 });
