@@ -4,6 +4,9 @@ import db from "../db.server";
 import { resolveMembership } from "../membership.server";
 import { saveNationalities } from "../nationality.server";
 import { SavedCountriesFailure, setCountrySaved, topFavorites } from "../saved-countries.server";
+import {
+  CALC_CLUB_PLAN_LIMIT, CALC_FREE_PLAN_LIMIT, PANEL_LABELS, budgetCategory, computeTotals, sanitizePlan,
+} from "../calc-plan.server";
 import { CLUB_NATIONALITY_LIMIT, FREE_NATIONALITY_LIMIT, NATIONALITY_NAMES } from "../nationalities";
 
 // Fase 3 Free-tier limits. Not configurable from Admin yet (no admin UI
@@ -314,6 +317,30 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       }),
     ]);
     return Response.json({ emergencyContacts, documents });
+  }
+
+  // Trip cost calculator plans. Open to any signed-in member; how many they
+  // can keep depends on membership (see CALC_*_PLAN_LIMIT).
+  if (searchParams.get("calcPlans")) {
+    const membership = await resolveMembership(session.shop, customerId);
+    const plans = await db.calculatorPlan.findMany({
+      where: { shop: session.shop, customerId },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true, name: true, currency: true, total: true, tripId: true, updatedAt: true },
+    });
+    return Response.json({ plans, limit: membership.isClub ? CALC_CLUB_PLAN_LIMIT : CALC_FREE_PLAN_LIMIT });
+  }
+
+  if (searchParams.get("calcPlan")) {
+    const plan = await db.calculatorPlan.findFirst({
+      where: { id: searchParams.get("calcPlan")!, shop: session.shop, customerId },
+    });
+    if (!plan) return Response.json({ error: "Not found" }, { status: 404 });
+    let data: unknown = null;
+    try { data = JSON.parse(plan.data); } catch { /* stored data is always written by sanitizePlan */ }
+    return Response.json({
+      plan: { id: plan.id, name: plan.name, currency: plan.currency, total: plan.total, tripId: plan.tripId, updatedAt: plan.updatedAt, data },
+    });
   }
 
   if (searchParams.get("journal")) {
@@ -738,7 +765,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       if (!name) return Response.json({ error: "Name is required" }, { status: 400 });
       const count = await db.participant.count({ where: { tripId: body.tripId } });
       const participant = await db.participant.create({
-        data: { tripId: body.tripId, name, sortOrder: count },
+        data: {
+          tripId: body.tripId,
+          name,
+          sortOrder: count,
+          weight: Number.isFinite(Number(body.weight)) ? Math.max(0.05, Math.min(1, Number(body.weight))) : 1,
+        },
       });
       return Response.json({ participant });
     }
@@ -753,6 +785,143 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       }
       await db.participant.delete({ where: { id: body.participantId } });
       return Response.json({ ok: true });
+    }
+
+    case "saveCalcPlan": {
+      const parsed = sanitizePlan(body.data);
+      if (!parsed.ok) {
+        return Response.json({ error: parsed.error }, { status: parsed.error === "PLAN_TOO_LARGE" ? 413 : 400 });
+      }
+      const plan = parsed.plan;
+      const limit = membership.isClub ? CALC_CLUB_PLAN_LIMIT : CALC_FREE_PLAN_LIMIT;
+      const totals = computeTotals(plan);
+      const name = String(body.name ?? "").replace(/[^\p{L}\p{N} .,'()/#&-]/gu, "").trim().slice(0, 40) || "Plan";
+      const data = JSON.stringify(plan);
+
+      let existing = null;
+      if (body.planId) {
+        existing = await db.calculatorPlan.findFirst({ where: { id: String(body.planId), shop, customerId } });
+        if (!existing) return Response.json({ error: "Not found" }, { status: 404 });
+      } else {
+        const count = await db.calculatorPlan.count({ where: { shop, customerId } });
+        if (count >= limit) {
+          return Response.json({ error: "FREE_CALC_PLAN_LIMIT", limit }, { status: 403 });
+        }
+      }
+      const fields = { name, currency: plan.f.mc, total: Math.round(totals.total), data };
+      const saved = existing
+        ? await db.calculatorPlan.update({ where: { id: existing.id }, data: fields })
+        : await db.calculatorPlan.create({ data: { shop, customerId, ...fields } });
+      return Response.json({
+        plan: { id: saved.id, name: saved.name, currency: saved.currency, total: saved.total, tripId: saved.tripId, updatedAt: saved.updatedAt },
+        totals,
+      });
+    }
+
+    case "deleteCalcPlan": {
+      const plan = await db.calculatorPlan.findFirst({ where: { id: String(body.planId ?? ""), shop, customerId } });
+      if (!plan) return Response.json({ error: "Not found" }, { status: 404 });
+      await db.calculatorPlan.delete({ where: { id: plan.id } });
+      return Response.json({ ok: true });
+    }
+
+    // Pushes a saved plan into Budget: the trip's budget becomes the goal
+    // the member typed (or the plan total when there is none) and one
+    // expense per panel is written. Re-applying replaces only the rows this
+    // plan wrote before (Expense.planId), never anything typed by hand.
+    case "applyCalcPlan": {
+      const plan = await db.calculatorPlan.findFirst({ where: { id: String(body.planId ?? ""), shop, customerId } });
+      if (!plan) return Response.json({ error: "Not found" }, { status: 404 });
+      const parsed = sanitizePlan(JSON.parse(plan.data));
+      if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
+      const data = parsed.plan;
+      const totals = computeTotals(data);
+      const loc = ["es", "en", "fr", "it"].includes(body.locale) ? body.locale : "en";
+      const labels = PANEL_LABELS[loc];
+
+      type Row = { category: string; label: string; amount: number };
+      const rows: Row[] = [];
+      for (const p of data.panels) {
+        const amount = Math.round(totals.panelTotals[p.id] ?? 0);
+        if (!p.on || amount <= 0) continue;
+        rows.push({ category: budgetCategory(p.id), label: p.custom ? (p.name ?? "") : labels[p.id], amount });
+      }
+      if (totals.contingency > 0) rows.push({ category: "otros", label: labels.cont, amount: Math.round(totals.contingency) });
+
+      let trip;
+      if (body.tripId) {
+        trip = await assertTripOwnership(String(body.tripId), shop, customerId);
+      } else {
+        if (!membership.isClub) {
+          const tripCount = await db.trip.count({ where: { shop, customerId } });
+          if (tripCount >= FREE_TRIP_LIMIT) {
+            return Response.json({ error: "FREE_TRIP_LIMIT", limit: FREE_TRIP_LIMIT }, { status: 403 });
+          }
+        }
+        const start = data.f.ms ? new Date(data.f.ms + "T00:00:00Z") : null;
+        trip = await db.trip.create({
+          data: {
+            shop, customerId, title: plan.name || "Trip",
+            destination: [...new Set(data.stops.map((s) => s.c))].slice(0, 3).join(" · ") || null,
+            startDate: start,
+            endDate: start ? new Date(start.getTime() + totals.days * 86_400_000) : null,
+          },
+        });
+      }
+
+      if (!membership.isClub) {
+        const others = await db.expense.count({
+          where: { tripId: trip.id, kind: "budget", OR: [{ planId: null }, { planId: { not: plan.id } }] },
+        });
+        if (others + rows.length > FREE_BUDGET_EXPENSE_LIMIT) {
+          return Response.json({ error: "FREE_BUDGET_LIMIT", limit: FREE_BUDGET_EXPENSE_LIMIT }, { status: 403 });
+        }
+      }
+
+      await db.$transaction([
+        db.expense.deleteMany({ where: { tripId: trip.id, planId: plan.id } }),
+        db.expense.createMany({
+          data: rows.map((r) => ({ tripId: trip.id, kind: "budget", planId: plan.id, ...r })),
+        }),
+        db.trip.update({
+          where: { id: trip.id },
+          data: { budgetTotal: data.f.goal > 0 ? data.f.goal : Math.round(totals.total), budgetCurrency: data.f.mc },
+        }),
+        db.calculatorPlan.update({ where: { id: plan.id }, data: { tripId: trip.id } }),
+      ]);
+      return Response.json({ tripId: trip.id, expenses: rows.length });
+    }
+
+    // Club-only: copies the plan's travelers into the trip's Split
+    // participants (matched by name, so running it twice doesn't duplicate
+    // anyone) with the share each one carries (a child paying 60% counts 0.6).
+    case "syncCalcSplit": {
+      if (!membership.isClub) {
+        return Response.json({ error: "CLUB_ONLY", feature: "split" }, { status: 403 });
+      }
+      const plan = await db.calculatorPlan.findFirst({ where: { id: String(body.planId ?? ""), shop, customerId } });
+      if (!plan) return Response.json({ error: "Not found" }, { status: 404 });
+      const trip = await assertTripOwnership(String(body.tripId ?? plan.tripId ?? ""), shop, customerId);
+      const parsed = sanitizePlan(JSON.parse(plan.data));
+      if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
+
+      const current = await db.participant.findMany({ where: { tripId: trip.id } });
+      let order = current.length;
+      const fallback = String(body.fallbackName ?? "").replace(/[^\p{L} ]/gu, "").slice(0, 20) || "Traveler";
+      let touched = 0;
+      for (const [i, t] of parsed.plan.trav.entries()) {
+        const name = t.n || `${fallback} ${i + 1}`;
+        const weight = Math.max(0.05, Math.min(1, t.w / 100));
+        const match = current.find((c) => c.name.trim().toLowerCase() === name.trim().toLowerCase());
+        if (match) {
+          await db.participant.update({ where: { id: match.id }, data: { weight } });
+        } else {
+          await db.participant.create({ data: { tripId: trip.id, name, weight, sortOrder: order++ } });
+        }
+        touched++;
+      }
+      await db.calculatorPlan.update({ where: { id: plan.id }, data: { tripId: trip.id } });
+      return Response.json({ tripId: trip.id, participants: touched });
     }
 
     case "createDocument": {

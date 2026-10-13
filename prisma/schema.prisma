@@ -64,6 +64,10 @@ model Participant {
   tripId    String
   trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
   name      String
+  // Share of the group's cost this person carries, relative to the others
+  // (1 = a full adult share, 0.6 = a child paying 60%). Set when the
+  // calculator pushes its travelers into Split; manual participants keep 1.
+  weight    Float    @default(1)
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
 
@@ -138,11 +142,16 @@ model Expense {
   // Budget's "all expenses" views must now filter to kind:"budget" or
   // they'd double-count Split entries once those exist.
   kind        String       @default("budget")
+  // Set when the row was generated from a CalculatorPlan, so applying that
+  // plan again replaces its own rows instead of duplicating them (no
+  // relation: deleting a plan must not delete expenses the member kept).
+  planId      String?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
   @@index([tripId])
   @@index([paidById])
+  @@index([planId])
 }
 
 // Documents can belong to one trip (tripId set, e.g. a hotel reservation)
@@ -394,4 +403,22 @@ model CountrySave {
 
   @@unique([shop, customerId, countryHandle])
   @@index([shop, countryHandle])
+}
+
+// A saved Trip Cost Calculator plan. `data` is the sanitized plan JSON
+// (see calc-plan.server.ts); `total` and `currency` are recomputed by the
+// server on every save and only used for the plan list.
+model CalculatorPlan {
+  id         String   @id @default(cuid())
+  shop       String
+  customerId String
+  name       String
+  currency   String   @default("USD")
+  total      Float    @default(0)
+  tripId     String?
+  data       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([shop, customerId])
 }
