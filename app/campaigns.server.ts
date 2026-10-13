@@ -38,7 +38,7 @@ export function validateFields(template: CampaignTemplateId, raw: Record<string,
     if (value.length > 500) return { error: `${field.label} is too long` };
     if (field.key === "discount_code" && !/^[A-Za-z0-9_-]{3,30}$/.test(value)) return { error: "The discount code can only have letters, numbers, - and _ (3 to 30 characters)" };
     if (field.key === "collection" && !/^[a-z0-9-]{1,80}$/.test(value)) return { error: "The collection handle looks wrong (lowercase letters, numbers and -)" };
-    if (["cta_url", "chapter_url", "chapter_image"].includes(field.key)) {
+    if (["cta_url", "chapter_url", "chapter_image"].includes(field.key) || /^item\d_url$/.test(field.key)) {
       try {
         if (new URL(value).protocol !== "https:") throw new Error();
       } catch {
@@ -124,6 +124,15 @@ function templateData(params: CampaignParams, unsubscribe: string, escape = true
     products: params.products,
     chapter: f.chapter_name
       ? { name: safe("chapter_name"), url: safe("chapter_url"), tagline: safe("chapter_tagline") ?? "", image: safe("chapter_image") ?? "" }
+      : undefined,
+    dispatch: f.dispatch_title
+      ? {
+          title: safe("dispatch_title"),
+          intro: safe("dispatch_intro") ?? "",
+          items: [1, 2, 3]
+            .map((n) => ({ title: safe(`item${n}_title`), text: safe(`item${n}_text`) ?? "", url: safe(`item${n}_url`) ?? "" }))
+            .filter((item) => item.title),
+        }
       : undefined,
     unsubscribe_url: unsubscribe,
   };

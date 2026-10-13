@@ -8,7 +8,8 @@ export type CampaignTemplateId =
   | "new-benefits"
   | "discount-code"
   | "new-products"
-  | "chapter-launch";
+  | "chapter-launch"
+  | "dispatch";
 
 export type CampaignField = {
   key: string;
@@ -90,6 +91,26 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplateSpec[] = [
       { key: "chapter_url", label: "Chapter link", required: true, placeholder: "https://rodiclub.com/..." },
       { key: "chapter_tagline", label: "Description (optional)", placeholder: "Leave empty for the default sentence" },
       { key: "chapter_image", label: "Image link (optional)", placeholder: "Leave empty to use the default picture" },
+    ],
+    usesProducts: false,
+  },
+  {
+    id: "dispatch",
+    label: "RODI Dispatch (newsletter)",
+    description: "The periodic newsletter: a title, a short intro and up to three stories (each with an optional link). No product or discount claims unless they are real.",
+    fields: [
+      { key: "dispatch_title", label: "Title (also the subject)", required: true, placeholder: "Lisboa, before the light" },
+      { key: "dispatch_intro", label: "Intro", required: true, help: "Two or three sentences in RODI's voice: places, pieces, journeys." },
+      { key: "item1_title", label: "Story 1 — title", required: true },
+      { key: "item1_text", label: "Story 1 — text", required: true },
+      { key: "item1_url", label: "Story 1 — link (optional)", placeholder: "https://rodiclub.com/..." },
+      { key: "item2_title", label: "Story 2 — title (optional)" },
+      { key: "item2_text", label: "Story 2 — text (optional)" },
+      { key: "item2_url", label: "Story 2 — link (optional)" },
+      { key: "item3_title", label: "Story 3 — title (optional)" },
+      { key: "item3_text", label: "Story 3 — text (optional)" },
+      { key: "item3_url", label: "Story 3 — link (optional)" },
+      { key: "cta_url", label: "Button link (optional)", placeholder: "Leave empty for the home page" },
     ],
     usesProducts: false,
   },

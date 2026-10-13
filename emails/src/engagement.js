@@ -94,4 +94,39 @@ const winback = {
   },
 };
 
-module.exports = [communityShare, referral, winback];
+// C8 (DEC-050) — RODI Dispatch: the periodic newsletter. Everything editorial comes from the campaign fields.
+const dispatch = {
+  id: "dispatch",
+  title: { es: "RODI Dispatch (newsletter)", en: "RODI Dispatch (newsletter)" },
+  channel: { type: "app", trigger: "Campaign (manual), e.g. every two weeks; title, intro and up to three stories written per issue" },
+  marketing: true,
+  subject: all("dispatch", "subject"),
+  preheader: all("dispatch", "preheader"),
+  variables: ["dispatch.title", "dispatch.intro", "dispatch.items[] (title, text, url)", "cta_url (optional)", "shop.url", "unsubscribe_url"],
+  sample: {
+    dispatch: {
+      title: "Lisboa, before the light",
+      intro: "A first look at Chapter Portugal: the places behind each piece and what to pack for an Atlantic week.",
+      items: [
+        { title: "The Chapter handbook", text: "Lisboa, Porto, Sintra and the Atlantic, piece by piece.", url: "https://rodiclub.com/pages/chapters?chapter=portugal" },
+        { title: "What to pack", text: "A linen set for the evenings, a cap for the miradouros.", url: "https://rodiclub.com/pages/packing" },
+      ],
+    },
+  },
+  build(lang) {
+    const S = copy("dispatch", lang);
+    const item = `{% for item in dispatch.items %}${K.para("<strong>{{ item.title }}</strong><br>{{ item.text }}{% if item.url != blank %}<br><a href=\"{{ item.url }}\">" + S.read + " →</a>{% endif %}", { padTop: 18, max: 460 })}{% endfor %}`;
+    return [
+      K.header({ tagline: tagline(lang) }),
+      K.hero({ src: "rodi-email-hero-lisboa.jpg", alt: "" }),
+      K.para(S.eyebrow.toUpperCase(), { padTop: 26, max: 460 }),
+      K.headline("{{ dispatch.title }}", { rule: false, padTop: 8 }),
+      K.para("{{ dispatch.intro }}", { padTop: 14, max: 460 }),
+      item,
+      K.button({ label: S.cta, url: "{% if cta_url != blank %}{{ cta_url }}{% else %}{{ shop.url }}{% endif %}", padTop: 30 }),
+      K.footer({ lang, quote: S.quote, marketing: true }),
+    ].join("\n");
+  },
+};
+
+module.exports = [communityShare, referral, winback, dispatch];

@@ -68,6 +68,32 @@
     ]
   },
   {
+    "id": "dispatch",
+    "title": {
+      "es": "RODI Dispatch (newsletter)",
+      "en": "RODI Dispatch (newsletter)"
+    },
+    "channel": {
+      "type": "app",
+      "trigger": "Campaign (manual), e.g. every two weeks; title, intro and up to three stories written per issue"
+    },
+    "marketing": true,
+    "subject": {
+      "es": "{{ dispatch.title }}",
+      "en": "{{ dispatch.title }}",
+      "fr": "{{ dispatch.title }}",
+      "it": "{{ dispatch.title }}"
+    },
+    "variables": [
+      "dispatch.title",
+      "dispatch.intro",
+      "dispatch.items[] (title, text, url)",
+      "cta_url (optional)",
+      "shop.url",
+      "unsubscribe_url"
+    ]
+  },
+  {
     "id": "limited-offer",
     "title": {
       "es": "Aprovecha esta oportunidad",

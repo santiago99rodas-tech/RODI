@@ -550,6 +550,15 @@ const COPY = {
 
 // copy("id", "es") -> strings; all("id", "subject") -> { es, en, fr, it }
 const copy = (id, lang) => COPY[id][lang];
+// C8 (DEC-050) — RODI Dispatch: periodic newsletter. Title, intro and up to three stories are written per issue
+// in the app (Campaigns); only the fixed labels live here.
+COPY["dispatch"] = {
+  es: { subject: "{{ dispatch.title }}", preheader: "El despacho de RODI: lugares, piezas y viajes.", eyebrow: "RODI Dispatch", read: "Leer más", cta: "Explorar RODI", quote: "Hecho para ir a lugares." },
+  en: { subject: "{{ dispatch.title }}", preheader: "The RODI dispatch: places, pieces and journeys.", eyebrow: "RODI Dispatch", read: "Read more", cta: "Explore RODI", quote: "Made for going places." },
+  fr: { subject: "{{ dispatch.title }}", preheader: "La dépêche RODI : lieux, pièces et voyages.", eyebrow: "RODI Dispatch", read: "Lire la suite", cta: "Découvrir RODI", quote: "Fait pour aller ailleurs." },
+  it: { subject: "{{ dispatch.title }}", preheader: "Il dispaccio RODI: luoghi, capi e viaggi.", eyebrow: "RODI Dispatch", read: "Leggi di più", cta: "Scopri RODI", quote: "Fatto per andare lontano." },
+};
+
 const all = (id, key) => Object.fromEntries(LANGS.map((l) => [l, COPY[id][l][key]]));
 const tagline = (lang) => TAGLINE[lang];
 
