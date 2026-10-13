@@ -10,7 +10,7 @@ const sharp = require("sharp");
 const EDGE = "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe";
 const SRC = path.join(__dirname, "..", "..", "rodi2-negro.svg");
 const OUT = path.join(__dirname, "..", "..", "shopify-theme", "assets", "rodi-share.jpg");
-const TAGLINE = process.argv[2] || "Tu vida viajera, en un solo lugar";
+const TAGLINE = process.argv[2] || "Made for going places.";
 
 const svg = fs.readFileSync(SRC, "utf8");
 const letter = [...svg.matchAll(/<path[^>]*\sd="([^"]+)"/g)].map((m) => `<path d="${m[1]}"/>`).join("");

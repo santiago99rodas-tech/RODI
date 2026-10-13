@@ -5,10 +5,10 @@
 const LANGS = ["es", "en", "fr", "it"];
 
 const TAGLINE = {
-  es: "Tu vida viajera, en un solo lugar",
-  en: "Your travel life, in one place",
-  fr: "Votre vie de voyageur, en un seul endroit",
-  it: "La tua vita da viaggiatore, in un unico posto",
+  es: "Hecho para ir a lugares",
+  en: "Made for going places",
+  fr: "Fait pour aller ailleurs",
+  it: "Fatto per andare lontano",
 };
 
 const COPY = {
