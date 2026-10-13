@@ -17,7 +17,7 @@ node serve.js    # http://localhost:4281, then `node shoot.js es 680` for Edge s
 | Tu compra fue exitosa (`order-confirmation`) | **Shopify** notification "Order confirmation" | Shopify's own |
 | Tu carrito sigue esperándote (`abandoned-checkout`) | **Shopify** notification "Abandoned checkout" | Shopify's own |
 | Tu cuenta ya está lista (`account-ready`) | **App**, on `customers/create` (promo access granted) | `promo_months`, `access_until` |
-| Bienvenido a RODI Club (`welcome-club`) | **App**, when a customer becomes a Club member | none |
+| Bienvenido a RODI Club (`welcome-club`) | **App**, automatically when an admin grants Club to someone who was not a member (once per customer); the "Send welcome email" button resends it | none |
 | Comparte tus experiencias, Refiere a un amigo, Te extrañamos, Aprovecha esta oportunidad, Conoce los nuevos beneficios, Tenemos nuevos descuentos, Descubre los nuevos productos, Descubre el nuevo Chapter | **App**, campaigns / automations | see manifest (`products[]`, `discount_code`, `referral_code`, `chapter`, `unsubscribe_url`...) |
 | Tu código de verificación (`verification-code`) | **Not deliverable**: Shopify sends the new-customer-accounts sign-in code itself and does not allow changing its design | n/a |
 
@@ -44,8 +44,9 @@ final art has clear space for the copy.
 ## Sending the app's emails (Resend)
 
 The app (`app/emails.server.ts`, `app/resend.server.ts`) renders `dist/<lang>/<id>.html` with liquidjs and sends it through the
-Resend API. Today it sends two emails: **account-ready** (automatically, from the `customers/create` webhook, once per
-customer) and **welcome-club** (only from the "Send welcome email" button on Admin > Club memberships). Marketing
+Resend API. Today it sends two emails, both automatically: **account-ready** (from the `customers/create` webhook, once per
+customer) and **welcome-club** (when an admin grants Club to someone who was not a member, once per customer; signups get
+account-ready instead, and the "Send welcome email" button on Admin > Club memberships resends it). Marketing
 campaigns are not sent from the app. `EmailLog` records every send and stops duplicates.
 
 One-time setup (done by a person, in this order):

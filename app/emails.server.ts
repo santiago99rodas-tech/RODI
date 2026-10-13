@@ -121,8 +121,31 @@ export async function sendAccountReadyEmail(
   }
 }
 
-// "Bienvenido a RODI Club": sent only when an admin presses the button on the memberships screen.
+// "Bienvenido a RODI Club", resent by an admin with the button on the memberships screen (force: sends again even if
+// the customer already got it).
 export async function sendWelcomeClubEmail(admin: AdminApiContext, shop: string, customerId: string, to: string) {
   const locale = normalizeLocale((await customerInfo(admin, customerId)).locale);
   return sendTemplateEmail({ shop, customerId, template: "welcome-club", to, locale, force: true });
+}
+
+// The automatic welcome: sent when someone who was not Club becomes Club through an admin grant. Signups do not get
+// it because "Tu cuenta ya está lista" already welcomes them, and a customer is welcomed once only (EmailLog guard).
+// Never throws, so a failed email cannot undo the grant.
+export async function sendWelcomeClubEmailAuto(admin: AdminApiContext, shop: string, customerId: string) {
+  try {
+    const membership = await resolveMembership(shop, customerId);
+    if (!membership.isClub) return { outcome: "skipped" as const, detail: "not a Club member" };
+    const info = await customerInfo(admin, customerId);
+    if (!info.email) return { outcome: "skipped" as const, detail: "customer has no email" };
+    const result = await sendTemplateEmail({
+      shop, customerId, template: "welcome-club", to: info.email, locale: normalizeLocale(info.locale),
+    });
+    if (result.outcome === "failed" || result.outcome === "skipped") {
+      console.warn(`[email] welcome-club for customer ${customerId}: ${result.outcome} (${result.detail})`);
+    }
+    return result;
+  } catch (err) {
+    console.error(`[email] welcome-club for customer ${customerId} threw`, err);
+    return { outcome: "failed" as const, detail: String(err) };
+  }
 }

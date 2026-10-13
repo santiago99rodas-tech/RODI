@@ -6,7 +6,7 @@ const { T, c, f } = K;
 const welcomeClub = {
   id: "welcome-club",
   title: { es: "Bienvenido a RODI Club", en: "Welcome to RODI Club" },
-  channel: { type: "app", trigger: "When a customer becomes a Club member (promotional access granted, or paid membership starts)" },
+  channel: { type: "app", trigger: "When an admin grants Club to someone who was not a member (sent once per customer). Signups get account-ready instead; a paid membership will trigger it too once billing exists" },
   marketing: false,
   subject: all("welcome-club", "subject"),
   preheader: all("welcome-club", "preheader"),

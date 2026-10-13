@@ -4,7 +4,7 @@ import { useFetcher, useLoaderData, useNavigate } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import { applyManualMembership, resolveMembership } from "../membership.server";
-import { sendWelcomeClubEmail } from "../emails.server";
+import { sendWelcomeClubEmail, sendWelcomeClubEmailAuto } from "../emails.server";
 import db from "../db.server";
 
 // Manual membership management for support/ops. Fase 2 (billing) is paused,
@@ -96,8 +96,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     if (intent === "grant") {
       const months = Number(form.get("months"));
       if (!GRANT_MONTHS.includes(months)) return { error: "Invalid duration" };
+      const wasClub = (await resolveMembership(shop, customerId)).isClub;
       await applyManualMembership(admin, shop, customerId, { kind: "grant", months });
-      return { ok: `Granted ${months} month${months === 1 ? "" : "s"} of Club access` };
+      const granted = `Granted ${months} month${months === 1 ? "" : "s"} of Club access`;
+      if (wasClub) return { ok: granted };
+      // Someone who was not Club has just become Club: welcome them automatically (once per customer).
+      const welcome = await sendWelcomeClubEmailAuto(admin, shop, customerId);
+      if (welcome.outcome === "sent") return { ok: `${granted} and sent the welcome email` };
+      if (welcome.outcome === "duplicate") return { ok: `${granted} (they already got the welcome email)` };
+      return { ok: `${granted}. The welcome email was not sent (${welcome.detail ?? welcome.outcome})` };
     }
     if (intent === "welcome") {
       // Explicit admin action: emails the customer the Club welcome. Needs an email and an active Club membership.
