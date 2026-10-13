@@ -3,7 +3,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useFetcher, useLoaderData } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
-import { backupDir, createBackup, databaseBytes, listBackups } from "../backup.server";
+import { backupDir, createBackup, databaseBytes, lastOffsiteStatus, listBackups, offsiteConfig } from "../backup.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
@@ -13,6 +13,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     enabled: process.env.BACKUP_ENABLED !== "false",
     hours: Math.max(1, Number(process.env.BACKUP_INTERVAL_HOURS) || 6),
     backups: listBackups(),
+    offsite: offsiteConfig() ? { bucket: offsiteConfig()!.bucket, last: lastOffsiteStatus() } : null,
   };
 };
 
@@ -20,7 +21,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   await authenticate.admin(request);
   try {
     const b = await createBackup();
-    return { ok: true as const, name: b.name };
+    return { ok: true as const, name: b.name, offsite: b.offsite ?? null };
   } catch (e) {
     return { ok: false as const, error: String((e as Error).message ?? e) };
   }
@@ -34,9 +35,28 @@ export default function Backups() {
   const shopify = useAppBridge();
   const running = ["loading", "submitting"].includes(fetcher.state);
 
+  // The download is a plain fetch with the app's session token, saved as a file from the browser.
+  const download = async (name: string) => {
+    try {
+      const token = await shopify.idToken();
+      const res = await fetch(`/app/backup-file?name=${encodeURIComponent(name)}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      shopify.toast.show(`Download failed: ${(e as Error).message}`, { isError: true });
+    }
+  };
+
   useEffect(() => {
     if (!fetcher.data) return;
-    shopify.toast.show(fetcher.data.ok ? `Backup created: ${fetcher.data.name}` : `Backup failed: ${fetcher.data.error}`, { isError: !fetcher.data.ok });
+    const d = fetcher.data;
+    const off = d.ok && d.offsite ? (d.offsite.ok ? " (also uploaded off-server)" : ` (off-server upload FAILED: ${d.offsite.error})`) : "";
+    shopify.toast.show(d.ok ? `Backup created: ${d.name}${off}` : `Backup failed: ${d.error}`, { isError: !d.ok || (!!d.offsite && !d.offsite.ok) });
   }, [fetcher.data, shopify]);
 
   return (
@@ -51,7 +71,17 @@ export default function Backups() {
         <s-paragraph>Database size: {data.dbBytes == null ? "unknown" : kb(data.dbBytes)}. Stored in: {data.dir}</s-paragraph>
         <s-paragraph>
           Retention: the 8 newest snapshots plus the newest one of each of the last 30 days. Snapshots live in the same
-          persistent volume as the database, so also copy them (or back up the volume) somewhere off the server.
+          persistent volume as the database, so a copy off the server is what protects you if the server or the volume is lost.
+        </s-paragraph>
+        <s-paragraph>
+          Off-server copy:{" "}
+          {data.offsite
+            ? data.offsite.last
+              ? data.offsite.last.ok
+                ? `ON (bucket ${data.offsite.bucket}). Last upload ${new Date(data.offsite.last.at).toLocaleString()}: ${data.offsite.last.name}`
+                : `ON but the last upload FAILED (${data.offsite.last.error})`
+              : `ON (bucket ${data.offsite.bucket}). Nothing uploaded since the last start; the next snapshot will be.`
+            : "OFF. Set the BACKUP_S3_* variables to upload every snapshot to a bucket, or download snapshots below by hand."}
         </s-paragraph>
       </s-section>
       <s-section heading={`Snapshots (${data.backups.length})`}>
@@ -60,7 +90,10 @@ export default function Backups() {
         ) : (
           data.backups.map((b) => (
             <s-paragraph key={b.name}>
-              {b.name} — {kb(b.bytes)} — {new Date(b.createdAt).toLocaleString()}
+              {b.name} — {kb(b.bytes)} — {new Date(b.createdAt).toLocaleString()}{" "}
+              <s-button variant="tertiary" onClick={() => download(b.name)}>
+                Download
+              </s-button>
             </s-paragraph>
           ))
         )}

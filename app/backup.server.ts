@@ -3,12 +3,17 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { pipeline } from "node:stream/promises";
 import db from "./db.server";
+import { putObjectRequest } from "./s3-sign.server";
 
 // Snapshots of the SQLite database, taken while the app is running (VACUUM INTO gives a consistent
 // copy without stopping anything), gzipped and kept next to the database in the persistent volume.
 //   BACKUP_ENABLED=false        turn the schedule off
 //   BACKUP_INTERVAL_HOURS=6     how often (default 6)
 //   BACKUP_DIR=/app/data/backups  where (default: "backups" next to the database file)
+// Off-server copy (optional, any S3-compatible bucket such as Cloudflare R2 or Backblaze B2). Every snapshot is
+// also uploaded when these are set:
+//   BACKUP_S3_ENDPOINT, BACKUP_S3_BUCKET, BACKUP_S3_ACCESS_KEY_ID, BACKUP_S3_SECRET_ACCESS_KEY
+//   BACKUP_S3_REGION (default "auto"), BACKUP_S3_PREFIX (default "rodi-trip-planner/")
 
 const KEEP_RECENT = 8; // newest snapshots are always kept
 const KEEP_DAYS = 30; // plus the newest snapshot of each of the last 30 days
@@ -25,7 +30,43 @@ export function backupDir(): string {
   return path.join(dbFile ? path.dirname(dbFile) : process.cwd(), "backups");
 }
 
-export type BackupInfo = { name: string; bytes: number; createdAt: string };
+export type BackupInfo = { name: string; bytes: number; createdAt: string; offsite?: OffsiteStatus };
+
+export type OffsiteStatus = { at: string; ok: boolean; error?: string } | null;
+let lastOffsite: (OffsiteStatus & { name: string }) | null = null;
+export const lastOffsiteStatus = () => lastOffsite;
+
+export function offsiteConfig() {
+  const e = process.env;
+  if (!(e.BACKUP_S3_ENDPOINT && e.BACKUP_S3_BUCKET && e.BACKUP_S3_ACCESS_KEY_ID && e.BACKUP_S3_SECRET_ACCESS_KEY)) return null;
+  return {
+    endpoint: e.BACKUP_S3_ENDPOINT,
+    bucket: e.BACKUP_S3_BUCKET,
+    region: e.BACKUP_S3_REGION || "auto",
+    accessKeyId: e.BACKUP_S3_ACCESS_KEY_ID,
+    secretAccessKey: e.BACKUP_S3_SECRET_ACCESS_KEY,
+    prefix: (e.BACKUP_S3_PREFIX ?? "rodi-trip-planner/").replace(/^\/+/, ""),
+  };
+}
+
+// Never throws: a failed upload must not turn a good local snapshot into a failed backup.
+export async function uploadOffsite(name: string) {
+  const cfg = offsiteConfig();
+  if (!cfg) return null;
+  try {
+    const body = fs.readFileSync(path.join(backupDir(), name));
+    const { url, headers } = putObjectRequest({ ...cfg, key: cfg.prefix + name, body });
+    delete headers.host; // fetch sets Host from the URL
+    const res = await fetch(url, { method: "PUT", headers, body });
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
+    lastOffsite = { name, at: new Date().toISOString(), ok: true };
+    console.log(`[backup] uploaded off-server: ${name}`);
+  } catch (e) {
+    lastOffsite = { name, at: new Date().toISOString(), ok: false, error: String((e as Error).message ?? e) };
+    console.error("[backup] off-server upload failed:", lastOffsite.error);
+  }
+  return lastOffsite;
+}
 
 export function listBackups(): BackupInfo[] {
   const dir = backupDir();
@@ -61,7 +102,8 @@ export async function createBackup(): Promise<BackupInfo> {
   fs.unlinkSync(base);
   pruneBackups();
   const stat = fs.statSync(gz);
-  return { name: path.basename(gz), bytes: stat.size, createdAt: stat.mtime.toISOString() };
+  const offsite = await uploadOffsite(path.basename(gz));
+  return { name: path.basename(gz), bytes: stat.size, createdAt: stat.mtime.toISOString(), offsite };
 }
 
 export function pruneBackups() {
