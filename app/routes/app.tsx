@@ -20,14 +20,14 @@ export default function App() {
       <s-app-nav>
         <s-link href="/app">Inicio</s-link>
         <s-link href="/app/memberships">Membresías Club</s-link>
-        <s-link href="/app/membership-backfill">Promo de lanzamiento Club</s-link>
-        <s-link href="/app/community-moderation">Moderación de la comunidad</s-link>
-        <s-link href="/app/service-inquiries">Consultas de RODI Services</s-link>
+        <s-link href="/app/membership-backfill">Promo lanzamiento</s-link>
+        <s-link href="/app/community-moderation">Moderación</s-link>
+        <s-link href="/app/service-inquiries">Consultas servicios</s-link>
         <s-link href="/app/email">Correo (Resend)</s-link>
         <s-link href="/app/campaigns">Campañas</s-link>
         <s-link href="/app/abandoned-carts">Carritos abandonados</s-link>
-        <s-link href="/app/backups">Respaldos de la base de datos</s-link>
-        <s-link href="/app/calculator-usage">Uso de la calculadora</s-link>
+        <s-link href="/app/backups">Respaldos</s-link>
+        <s-link href="/app/calculator-usage">Uso calculadora</s-link>
       </s-app-nav>
       <Outlet />
     </AppProvider>
