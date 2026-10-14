@@ -14,8 +14,8 @@ import db from "../db.server";
 const LOCALES = ["es", "en", "fr", "it"];
 
 const TEMPLATES: { id: AppEmailTemplate; label: string }[] = [
-  { id: "account-ready", label: "Your account is ready (sent on signup)" },
-  { id: "welcome-club", label: "Welcome to RODI Club (sent from the memberships screen)" },
+  { id: "account-ready", label: "Tu cuenta está lista (se envía al registrarse)" },
+  { id: "welcome-club", label: "Bienvenido a RODI Club (se envía desde la pantalla de membresías)" },
 ];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -47,8 +47,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const template = String(form.get("template") ?? "") as AppEmailTemplate;
   const locale = normalizeLocale(String(form.get("locale") ?? ""));
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return { error: "Enter a valid email address" };
-  if (!TEMPLATES.some((t) => t.id === template)) return { error: "Unknown template" };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return { error: "Escribe un correo electrónico válido" };
+  if (!TEMPLATES.some((t) => t.id === template)) return { error: "Plantilla desconocida" };
 
   try {
     const rendered = await renderEmail(template, locale, {
@@ -56,10 +56,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       access_until: formatEmailDate(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), locale),
     });
     const result = await sendEmail({ to, subject: `[TEST] ${rendered.subject}`, html: rendered.html });
-    if (result.ok) return { ok: `Test sent to ${to}` };
-    return { error: result.skipped ? `Not sent: ${result.reason}` : `Resend rejected it: ${result.error}` };
+    if (result.ok) return { ok: `Prueba enviada a ${to}` };
+    return { error: result.skipped ? `No se envió: ${result.reason}` : `Resend lo rechazó: ${result.error}` };
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "Could not send the test" };
+    return { error: err instanceof Error ? err.message : "No se pudo enviar la prueba" };
   }
 };
 
@@ -79,32 +79,32 @@ export default function EmailSettings() {
   }, [fetcher.data, shopify]);
 
   return (
-    <s-page heading="Email (Resend)">
-      <s-section heading="Status">
+    <s-page heading="Correo (Resend)">
+      <s-section heading="Estado">
         <s-stack gap="base">
-          <s-text fontWeight="bold">{configured ? "Ready to send" : "Not configured — emails are skipped"}</s-text>
-          <s-text>API key: {hasKey ? "set" : "missing (RESEND_API_KEY)"}</s-text>
-          <s-text>From: {from || "missing (EMAIL_FROM)"}</s-text>
-          <s-text>Reply-to: {replyTo}</s-text>
-          <s-text>Fallback language: {defaultLocale}</s-text>
+          <s-text fontWeight="bold">{configured ? "Listo para enviar" : "Sin configurar — los correos se omiten"}</s-text>
+          <s-text>Clave de API: {hasKey ? "configurada" : "falta (RESEND_API_KEY)"}</s-text>
+          <s-text>Remitente: {from || "falta (EMAIL_FROM)"}</s-text>
+          <s-text>Responder a: {replyTo}</s-text>
+          <s-text>Idioma por defecto: {defaultLocale}</s-text>
           <s-paragraph>
-            Set RESEND_API_KEY and EMAIL_FROM (for example &ldquo;RODI Club &lt;club@rodiclub.com&gt;&rdquo;) as
-            environment variables in EasyPanel and redeploy. The domain must be verified in Resend first.
+            Define RESEND_API_KEY y EMAIL_FROM (por ejemplo &ldquo;RODI Club &lt;club@rodiclub.com&gt;&rdquo;) como
+            variables de entorno en EasyPanel y vuelve a desplegar. Primero hay que verificar el dominio en Resend.
           </s-paragraph>
         </s-stack>
       </s-section>
 
-      <s-section heading="Send a test">
+      <s-section heading="Enviar una prueba">
         <s-stack gap="base">
-          <s-text-field label="Send to" value={to} onInput={(e: any) => setTo(e.target.value)}></s-text-field>
-          <s-select label="Template" value={template} onChange={(e: any) => setTemplate(e.target.value)}>
+          <s-text-field label="Enviar a" value={to} onInput={(e: any) => setTo(e.target.value)}></s-text-field>
+          <s-select label="Plantilla" value={template} onChange={(e: any) => setTemplate(e.target.value)}>
             {TEMPLATES.map((t) => (
               <s-option key={t.id} value={t.id}>
                 {t.label}
               </s-option>
             ))}
           </s-select>
-          <s-select label="Language" value={locale} onChange={(e: any) => setLocale(e.target.value)}>
+          <s-select label="Idioma" value={locale} onChange={(e: any) => setLocale(e.target.value)}>
             {LOCALES.map((l) => (
               <s-option key={l} value={l}>
                 {l}
@@ -112,20 +112,20 @@ export default function EmailSettings() {
             ))}
           </s-select>
           <s-button disabled={busy || !to} onClick={() => fetcher.submit({ to, template, locale }, { method: "POST" })}>
-            Send test
+            Enviar prueba
           </s-button>
         </s-stack>
       </s-section>
 
-      <s-section heading="Recent sends">
+      <s-section heading="Envíos recientes">
         {recent.length === 0 ? (
-          <s-paragraph>Nothing sent yet.</s-paragraph>
+          <s-paragraph>Aún no se ha enviado nada.</s-paragraph>
         ) : (
           <s-stack gap="base">
             {recent.map((r) => (
               <s-box key={r.id} padding="base" borderWidth="base" borderRadius="base">
                 <s-text>
-                  {r.template} · {r.locale} · {r.status} · {r.recipient} · {new Date(r.at).toLocaleString()}
+                  {r.template} · {r.locale} · {r.status} · {r.recipient} · {new Date(r.at).toLocaleString("es-CO")}
                   {r.error ? ` · ${r.error}` : ""}
                 </s-text>
               </s-box>

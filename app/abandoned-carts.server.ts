@@ -107,25 +107,25 @@ export async function runAbandonedCarts(
   for (const cart of checkouts) {
     const customer = cart.customer;
     const email = customer?.email?.trim().toLowerCase() ?? "";
-    const base = { checkoutId: cart.id, email: email || "(no email)", items: cart.lineItems.nodes.length, total: cart.totalPriceSet ? `${cart.totalPriceSet.shopMoney.amount} ${cart.totalPriceSet.shopMoney.currencyCode}` : "" };
+    const base = { checkoutId: cart.id, email: email || "(sin correo)", items: cart.lineItems.nodes.length, total: cart.totalPriceSet ? `${cart.totalPriceSet.shopMoney.amount} ${cart.totalPriceSet.shopMoney.currencyCode}` : "" };
     const skip = (reason: string) => decisions.push({ ...base, action: "skip", reason });
 
     const idle = now - new Date(cart.updatedAt).getTime();
-    if (cart.completedAt) { skip("completed"); continue; }
-    if (idle < delayMinutes() * 60 * 1000) { skip("left less than the waiting time ago"); continue; }
-    if (idle > maxAgeHours() * 60 * 60 * 1000) { skip("too old"); continue; }
-    if (!customer || !email) { skip("no customer email"); continue; }
-    if (cart.lineItems.nodes.length === 0) { skip("empty cart"); continue; }
-    if (audience() === "subscribed" && customer.emailMarketingConsent?.marketingState !== "SUBSCRIBED") { skip("not subscribed to marketing emails"); continue; }
+    if (cart.completedAt) { skip("compra completada"); continue; }
+    if (idle < delayMinutes() * 60 * 1000) { skip("lo dejó hace menos del tiempo de espera"); continue; }
+    if (idle > maxAgeHours() * 60 * 60 * 1000) { skip("demasiado antiguo"); continue; }
+    if (!customer || !email) { skip("sin correo del cliente"); continue; }
+    if (cart.lineItems.nodes.length === 0) { skip("carrito vacío"); continue; }
+    if (audience() === "subscribed" && customer.emailMarketingConsent?.marketingState !== "SUBSCRIBED") { skip("no está suscrito a correos de marketing"); continue; }
 
     const customerId = customer.id.replace("gid://shopify/Customer/", "");
     const logged = await db.abandonedCartLog.findUnique({ where: { shop_checkoutId: { shop, checkoutId: cart.id } } });
-    if (logged && logged.status !== "failed") { skip("already emailed"); continue; }
+    if (logged && logged.status !== "failed") { skip("ya se le escribió"); continue; }
     const recent = await db.abandonedCartLog.findFirst({ where: { shop, email, status: "sent", createdAt: { gte: new Date(now - COOLDOWN_MS) } } });
-    if (recent) { skip("emailed about another cart in the last 7 days"); continue; }
-    if (await hasOrderedSince(admin, customerId, new Date(cart.createdAt))) { skip("ordered since"); continue; }
+    if (recent) { skip("se le escribió por otro carrito en los últimos 7 días"); continue; }
+    if (await hasOrderedSince(admin, customerId, new Date(cart.createdAt))) { skip("compró después"); continue; }
 
-    if (sends >= MAX_PER_RUN) { skip("limit per run reached (will be picked up next run)"); continue; }
+    if (sends >= MAX_PER_RUN) { skip("límite por ejecución alcanzado (se retoma en la siguiente)"); continue; }
 
     if (options.dryRun) { decisions.push({ ...base, action: "send" }); sends++; continue; }
 

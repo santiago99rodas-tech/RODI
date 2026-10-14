@@ -67,7 +67,7 @@ export default function MembershipBackfill() {
   useEffect(() => {
     if (fetcher.data) {
       shopify.toast.show(
-        `Backfill complete — granted ${fetcher.data.grantedCount}, already had access ${fetcher.data.skippedCount}`,
+        `Proceso terminado — se otorgó acceso a ${fetcher.data.grantedCount}; ${fetcher.data.skippedCount} ya lo tenían`,
       );
     }
   }, [fetcher.data, shopify]);
@@ -75,24 +75,21 @@ export default function MembershipBackfill() {
   const runBackfill = () => fetcher.submit({}, { method: "POST" });
 
   return (
-    <s-page heading="RODI Club — launch promo backfill">
-      <s-section heading="Grant Complimentary Club Access to existing customers">
+    <s-page heading="RODI Club — promo de lanzamiento para clientes existentes">
+      <s-section heading="Dar acceso Club de cortesía a los clientes existentes">
         <s-paragraph>
-          By default, only customers who sign up from now on receive the 3-month
-          Complimentary Club Access promo (granted automatically via the
-          customers/create webhook). Customers who already had an account before
-          this launched do NOT get it automatically.
+          Por defecto, solo los clientes que se registran desde ahora reciben la promo de 3 meses de
+          acceso Club de cortesía (se otorga automáticamente con el webhook customers/create). Los
+          clientes que ya tenían cuenta antes del lanzamiento NO la reciben automáticamente.
         </s-paragraph>
         <s-paragraph>
-          Clicking the button below runs a one-time pass over every existing
-          customer and grants the same promo to anyone who doesn&rsquo;t already
-          have a membership record. This is irreversible to re-run selectively
-          — it either runs for everyone who&rsquo;s missing it, or not at all.
-          Only do this once the business has decided existing customers should
-          get the launch promo too.
+          El botón de abajo recorre una sola vez a todos los clientes existentes y da la misma promo a
+          quien aún no tenga un registro de membresía. No se puede repetir de forma selectiva: se aplica
+          a todos los que les falte, o a ninguno. Hazlo solo cuando el negocio haya decidido que los
+          clientes existentes también reciban la promo de lanzamiento.
         </s-paragraph>
         <s-button slot="primary-action" onClick={runBackfill} disabled={isRunning}>
-          {isRunning ? "Running…" : "Grant Club access to all existing customers"}
+          {isRunning ? "Procesando…" : "Dar acceso Club a todos los clientes existentes"}
         </s-button>
       </s-section>
     </s-page>

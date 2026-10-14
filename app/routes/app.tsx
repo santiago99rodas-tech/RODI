@@ -18,16 +18,16 @@ export default function App() {
   return (
     <AppProvider apiKey={apiKey}>
       <s-app-nav>
-        <s-link href="/app">Home</s-link>
-        <s-link href="/app/memberships">Club memberships</s-link>
-        <s-link href="/app/membership-backfill">Club launch promo backfill</s-link>
-        <s-link href="/app/community-moderation">Community moderation</s-link>
-        <s-link href="/app/service-inquiries">RODI Services inquiries</s-link>
-        <s-link href="/app/email">Email (Resend)</s-link>
-        <s-link href="/app/campaigns">Campaigns</s-link>
-        <s-link href="/app/abandoned-carts">Abandoned carts</s-link>
-        <s-link href="/app/backups">Database backups</s-link>
-        <s-link href="/app/calculator-usage">Calculator usage</s-link>
+        <s-link href="/app">Inicio</s-link>
+        <s-link href="/app/memberships">Membresías Club</s-link>
+        <s-link href="/app/membership-backfill">Promo de lanzamiento Club</s-link>
+        <s-link href="/app/community-moderation">Moderación de la comunidad</s-link>
+        <s-link href="/app/service-inquiries">Consultas de RODI Services</s-link>
+        <s-link href="/app/email">Correo (Resend)</s-link>
+        <s-link href="/app/campaigns">Campañas</s-link>
+        <s-link href="/app/abandoned-carts">Carritos abandonados</s-link>
+        <s-link href="/app/backups">Respaldos de la base de datos</s-link>
+        <s-link href="/app/calculator-usage">Uso de la calculadora</s-link>
       </s-app-nav>
       <Outlet />
     </AppProvider>

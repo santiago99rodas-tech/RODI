@@ -8,22 +8,22 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 const SECTIONS: { href: string; title: string; text: string }[] = [
-  { href: "/app/memberships", title: "Club memberships", text: "See who is Free or Club, grant or remove Club access, and send the welcome email." },
-  { href: "/app/membership-backfill", title: "Club launch promo backfill", text: "Give the launch access to members who joined before the promo." },
-  { href: "/app/community-moderation", title: "Community moderation", text: "Review questions, answers and recommendations; hide or restore posts." },
-  { href: "/app/service-inquiries", title: "RODI Services inquiries", text: "Requests members sent for RODI Services, with status and internal notes." },
-  { href: "/app/email", title: "Email (Resend)", text: "Sending status and a test send for the app emails." },
-  { href: "/app/campaigns", title: "Campaigns", text: "Preview and send marketing emails to an audience." },
-  { href: "/app/abandoned-carts", title: "Abandoned carts", text: "Reminder emails for checkouts that were not completed." },
-  { href: "/app/backups", title: "Database backups", text: "Automatic backups, off-server copies and manual download." },
-  { href: "/app/calculator-usage", title: "Calculator usage", text: "How members use the trip cost calculator (aggregates only)." },
+  { href: "/app/memberships", title: "Membresías Club", text: "Mira quién es Free o Club, da o quita acceso Club y envía el correo de bienvenida." },
+  { href: "/app/membership-backfill", title: "Promo de lanzamiento Club", text: "Da el acceso de lanzamiento a quienes se registraron antes de la promo." },
+  { href: "/app/community-moderation", title: "Moderación de la comunidad", text: "Revisa preguntas, respuestas y recomendaciones; oculta o restaura publicaciones." },
+  { href: "/app/service-inquiries", title: "Consultas de RODI Services", text: "Solicitudes que enviaron los miembros para RODI Services, con estado y notas internas." },
+  { href: "/app/email", title: "Correo (Resend)", text: "Estado del envío y una prueba de los correos de la app." },
+  { href: "/app/campaigns", title: "Campañas", text: "Previsualiza y envía correos de marketing a una audiencia." },
+  { href: "/app/abandoned-carts", title: "Carritos abandonados", text: "Correos recordatorio para compras que no se completaron." },
+  { href: "/app/backups", title: "Respaldos de la base de datos", text: "Copias automáticas, copias fuera del servidor y descarga manual." },
+  { href: "/app/calculator-usage", title: "Uso de la calculadora", text: "Cómo usan los miembros la calculadora de costos de viaje (solo totales)." },
 ];
 
 export default function Index() {
   return (
     <s-page heading="RODI Trip Planner">
-      <s-section heading="Admin tools">
-        <s-paragraph>The planner itself runs in the store at /apps/trip-planner. These pages manage what sits behind it.</s-paragraph>
+      <s-section heading="Herramientas de administración">
+        <s-paragraph>El planificador funciona en la tienda en /apps/trip-planner. Estas páginas administran lo que hay detrás.</s-paragraph>
         <s-stack direction="block" gap="base">
           {SECTIONS.map((s) => (
             <s-box key={s.href} padding="base" borderWidth="base" borderRadius="base" background="subdued">

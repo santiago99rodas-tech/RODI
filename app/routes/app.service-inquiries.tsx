@@ -43,7 +43,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const data: { status?: string; internalNote?: string } = {};
   if (typeof status === "string" && status) {
     if (!["information_required", "in_review", "delivered", "closed", "purchased"].includes(status)) {
-      return { error: "Invalid status" };
+      return { error: "Estado no válido" };
     }
     data.status = status;
   }
@@ -56,6 +56,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 const STATUSES = ["information_required", "in_review", "delivered", "closed", "purchased"] as const;
+const STATUS_LABEL: Record<string, string> = {
+  information_required: "Falta información",
+  in_review: "En revisión",
+  delivered: "Entregado",
+  closed: "Cerrado",
+  purchased: "Comprado",
+};
 
 function InquiryRow({ inquiry, fetcher }: { inquiry: any; fetcher: ReturnType<typeof useFetcher> }) {
   const [note, setNote] = useState(inquiry.internalNote || "");
@@ -65,10 +72,10 @@ function InquiryRow({ inquiry, fetcher }: { inquiry: any; fetcher: ReturnType<ty
       <s-stack gap="base">
         <s-text fontWeight="bold">{inquiry.serviceType}</s-text>
         <s-text tone="neutral">
-          Customer {inquiry.customerId} · {new Date(inquiry.createdAt).toLocaleDateString()}
-          {inquiry.trip ? ` · Trip: ${inquiry.trip.title}` : ""}
+          Cliente {inquiry.customerId} · {new Date(inquiry.createdAt).toLocaleDateString("es-CO")}
+          {inquiry.trip ? ` · Viaje: ${inquiry.trip.title}` : ""}
         </s-text>
-        {inquiry.notes && <s-paragraph>Customer notes: {inquiry.notes}</s-paragraph>}
+        {inquiry.notes && <s-paragraph>Notas del cliente: {inquiry.notes}</s-paragraph>}
 
         <s-stack direction="inline" gap="base">
           {STATUSES.map((s) => (
@@ -77,30 +84,30 @@ function InquiryRow({ inquiry, fetcher }: { inquiry: any; fetcher: ReturnType<ty
               variant={s === inquiry.status ? "primary" : "secondary"}
               onClick={() => fetcher.submit({ id: inquiry.id, status: s }, { method: "POST" })}
             >
-              {s}
+              {STATUS_LABEL[s]}
             </s-button>
           ))}
         </s-stack>
 
         <s-text-area
-          label="Internal note (never shown to the customer)"
+          label="Nota interna (el cliente nunca la ve)"
           value={note}
           onInput={(e: any) => setNote(e.target.value)}
         ></s-text-area>
         <s-button
           onClick={() => fetcher.submit({ id: inquiry.id, internalNote: note }, { method: "POST" })}
         >
-          Save note
+          Guardar nota
         </s-button>
 
         <s-button
           tone="critical"
           onClick={() => {
-            if (!window.confirm(`Permanently delete this ${inquiry.serviceType} inquiry? This cannot be undone.`)) return;
+            if (!window.confirm(`¿Eliminar para siempre esta consulta de ${inquiry.serviceType}? No se puede deshacer.`)) return;
             fetcher.submit({ id: inquiry.id, intent: "delete" }, { method: "POST" });
           }}
         >
-          Delete permanently
+          Eliminar para siempre
         </s-button>
       </s-stack>
     </s-box>
@@ -119,10 +126,10 @@ export default function ServiceInquiries() {
   }, [fetcher.data, shopify]);
 
   return (
-    <s-page heading="RODI Services — inquiries">
-      <s-section heading={`Inquiries (${inquiries.length})`}>
+    <s-page heading="RODI Services — consultas">
+      <s-section heading={`Consultas (${inquiries.length})`}>
         {inquiries.length === 0 ? (
-          <s-paragraph>No service inquiries yet.</s-paragraph>
+          <s-paragraph>Aún no hay consultas de servicios.</s-paragraph>
         ) : (
           <s-stack gap="base">
             {inquiries.map((inquiry) => (

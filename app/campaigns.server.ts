@@ -27,22 +27,22 @@ const escapeHtml = (value: string) =>
 
 export function validateFields(template: CampaignTemplateId, raw: Record<string, string>): { fields: Record<string, string> } | { error: string } {
   const spec = specFor(template);
-  if (!spec) return { error: "Unknown email" };
+  if (!spec) return { error: "Correo desconocido" };
   const fields: Record<string, string> = {};
   for (const field of spec.fields) {
     const value = (raw[field.key] ?? "").trim();
     if (!value) {
-      if (field.required) return { error: `${field.label} is required` };
+      if (field.required) return { error: `${field.label} es obligatorio` };
       continue;
     }
-    if (value.length > 500) return { error: `${field.label} is too long` };
-    if (field.key === "discount_code" && !/^[A-Za-z0-9_-]{3,30}$/.test(value)) return { error: "The discount code can only have letters, numbers, - and _ (3 to 30 characters)" };
-    if (field.key === "collection" && !/^[a-z0-9-]{1,80}$/.test(value)) return { error: "The collection handle looks wrong (lowercase letters, numbers and -)" };
+    if (value.length > 500) return { error: `${field.label} es demasiado largo` };
+    if (field.key === "discount_code" && !/^[A-Za-z0-9_-]{3,30}$/.test(value)) return { error: "El código de descuento solo puede tener letras, números, - y _ (de 3 a 30 caracteres)" };
+    if (field.key === "collection" && !/^[a-z0-9-]{1,80}$/.test(value)) return { error: "El handle de la colección parece incorrecto (minúsculas, números y -)" };
     if (["cta_url", "chapter_url", "chapter_image"].includes(field.key) || /^item\d_url$/.test(field.key)) {
       try {
         if (new URL(value).protocol !== "https:") throw new Error();
       } catch {
-        return { error: `${field.label} must be a full https:// link` };
+        return { error: `${field.label} debe ser un enlace completo con https://` };
       }
     }
     fields[field.key] = value;
@@ -61,7 +61,7 @@ export async function fetchProducts(admin: AdminApiContext, collection?: string)
   const body: any = await response.json();
   if (body?.errors?.length) {
     const message = body.errors.map((e: { message?: string }) => e.message).join("; ");
-    throw new Error(/access denied/i.test(message) ? `${message} The app needs the read_products permission: add it to SCOPES in EasyPanel, run shopify app deploy and approve it in Shopify.` : message);
+    throw new Error(/access denied/i.test(message) ? `${message} La app necesita el permiso read_products: agrégalo a SCOPES en EasyPanel, ejecuta shopify app deploy y apruébalo en Shopify.` : message);
   }
   const nodes: any[] = collection ? body?.data?.collectionByHandle?.products?.nodes ?? [] : body?.data?.products?.nodes ?? [];
   return nodes
@@ -153,13 +153,13 @@ export async function createCampaign(
   input: { template: CampaignTemplateId; audience: CampaignAudience; fields: Record<string, string> },
 ): Promise<{ id: string } | { error: string }> {
   const spec = specFor(input.template);
-  if (!spec) return { error: "Unknown email" };
+  if (!spec) return { error: "Correo desconocido" };
   const products = spec.usesProducts ? await fetchProducts(admin, input.fields.collection) : [];
   if (spec.usesProducts && products.length < 1) {
-    return { error: input.fields.collection ? "That collection has no active products with images" : "The shop has no active products with images" };
+    return { error: input.fields.collection ? "Esa colección no tiene productos activos con imágenes" : "La tienda no tiene productos activos con imágenes" };
   }
   const audience = await fetchAudience(admin, shop, input.audience);
-  if (audience.length === 0) return { error: "Nobody in that audience has accepted marketing emails" };
+  if (audience.length === 0) return { error: "Nadie de esa audiencia ha aceptado correos de marketing" };
 
   const campaign = await db.campaign.create({
     data: { shop, template: input.template, audience: input.audience, params: JSON.stringify({ fields: input.fields, products } satisfies CampaignParams), total: audience.length },
@@ -185,11 +185,11 @@ export async function campaignCounts(campaignId: string): Promise<Counts> {
 
 export async function sendNextBatch(shop: string, campaignId: string): Promise<{ counts: Counts; status: string; error?: string }> {
   const campaign = await db.campaign.findFirst({ where: { id: campaignId, shop } });
-  if (!campaign) throw new Error("Campaign not found");
+  if (!campaign) throw new Error("Campaña no encontrada");
   if (campaign.status === "cancelled" || campaign.status === "sent") return { counts: await campaignCounts(campaignId), status: campaign.status };
 
   const config = resendConfig();
-  if (!config.hasKey || !config.from) return { counts: await campaignCounts(campaignId), status: campaign.status, error: "Resend is not configured (RESEND_API_KEY / EMAIL_FROM)" };
+  if (!config.hasKey || !config.from) return { counts: await campaignCounts(campaignId), status: campaign.status, error: "Resend no está configurado (RESEND_API_KEY / EMAIL_FROM)" };
 
   if (campaign.status === "draft") await db.campaign.update({ where: { id: campaignId }, data: { status: "sending" } });
   const params = JSON.parse(campaign.params) as CampaignParams;

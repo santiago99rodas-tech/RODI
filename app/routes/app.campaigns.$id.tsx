@@ -53,10 +53,12 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
       return { counts: await campaignCounts(id), status: "cancelled" };
     }
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "Something went wrong" };
+    return { error: err instanceof Error ? err.message : "Algo salió mal" };
   }
-  return { error: "Unknown action" };
+  return { error: "Acción desconocida" };
 };
+
+const STATUS_LABEL: Record<string, string> = { draft: "Preparada", sending: "Enviando", sent: "Enviada", cancelled: "Cancelada" };
 
 export default function CampaignDetail() {
   const data = useLoaderData<typeof loader>();
@@ -79,14 +81,14 @@ export default function CampaignDetail() {
       shopify.toast.show(result.error, { isError: true });
     } else if (result && (result.status === "sent" || result.status === "cancelled" || result.counts?.pending === 0)) {
       setRunning(false);
-      shopify.toast.show(result.counts?.failed ? `Finished with ${result.counts.failed} failed` : "Campaign sent");
+      shopify.toast.show(result.counts?.failed ? `Terminó con ${result.counts.failed} fallidos` : "Campaña enviada");
     } else {
       fetcher.submit({ intent: "next" }, { method: "POST" });
     }
   }, [running, fetcher, fetcher.state, fetcher.data, shopify]);
 
   const start = () => {
-    if (!window.confirm(`Send "${data.label}" to ${counts.pending} people now? This cannot be undone.`)) return;
+    if (!window.confirm(`¿Enviar "${data.label}" a ${counts.pending} personas ahora? No se puede deshacer.`)) return;
     lastHandled.current = null;
     setRunning(true);
     fetcher.submit({ intent: "next" }, { method: "POST" });
@@ -96,25 +98,25 @@ export default function CampaignDetail() {
   const canSend = data.configured && status !== "sent" && status !== "cancelled" && counts.pending > 0;
 
   return (
-    <s-page heading={`Campaign: ${data.label}`}>
-      <s-section heading="Status">
+    <s-page heading={`Campaña: ${data.label}`}>
+      <s-section heading="Estado">
         <s-stack gap="base">
-          <s-text fontWeight="bold">{status}{running ? " (sending…)" : ""}</s-text>
-          <s-text>Audience: {data.audience}</s-text>
-          <s-text>Subject: {data.subject}</s-text>
+          <s-text fontWeight="bold">{STATUS_LABEL[status] ?? status}{running ? " (enviando…)" : ""}</s-text>
+          <s-text>Audiencia: {data.audience}</s-text>
+          <s-text>Asunto: {data.subject}</s-text>
           <s-text>
-            {counts.total} recipients · {counts.sent} sent · {counts.pending} waiting · {counts.failed} failed · {counts.skipped} skipped
+            {counts.total} destinatarios · {counts.sent} enviados · {counts.pending} en espera · {counts.failed} fallidos · {counts.skipped} omitidos
           </s-text>
-          <s-text>Progress: {counts.total ? Math.round((done / counts.total) * 100) : 0}%</s-text>
-          {!data.configured && <s-text tone="critical">Resend is not configured, so nothing can be sent.</s-text>}
+          <s-text>Avance: {counts.total ? Math.round((done / counts.total) * 100) : 0}%</s-text>
+          {!data.configured && <s-text tone="critical">Resend no está configurado, así que no se puede enviar nada.</s-text>}
 
           <s-stack direction="inline" gap="base">
             <s-button variant="primary" disabled={!canSend || running} onClick={start}>
-              {counts.sent > 0 ? "Resume sending" : "Send"}
+              {counts.sent > 0 ? "Reanudar el envío" : "Enviar"}
             </s-button>
             {counts.failed > 0 && (
               <s-button disabled={running} onClick={() => fetcher.submit({ intent: "retry" }, { method: "POST" })}>
-                Retry failed
+                Reintentar los fallidos
               </s-button>
             )}
             {status !== "sent" && status !== "cancelled" && (
@@ -122,21 +124,21 @@ export default function CampaignDetail() {
                 tone="critical"
                 disabled={running}
                 onClick={() => {
-                  if (window.confirm("Cancel this campaign? Anyone not mailed yet will be skipped.")) fetcher.submit({ intent: "cancel" }, { method: "POST" });
+                  if (window.confirm("¿Cancelar esta campaña? A quienes aún no se les haya enviado se les omitirá.")) fetcher.submit({ intent: "cancel" }, { method: "POST" });
                 }}
               >
-                Cancel campaign
+                Cancelar campaña
               </s-button>
             )}
           </s-stack>
           <s-paragraph>
-            Keep this page open while it sends. If you close it, sending pauses and "Resume sending" continues where it stopped; nobody is mailed twice.
+            Deja esta página abierta mientras se envía. Si la cierras, el envío se pausa y "Reanudar el envío" continúa donde se quedó; a nadie se le escribe dos veces.
           </s-paragraph>
         </s-stack>
       </s-section>
 
       {data.failed.length > 0 && (
-        <s-section heading="Failed (first 10)">
+        <s-section heading="Fallidos (los primeros 10)">
           <s-stack gap="base">
             {data.failed.map((f) => (
               <s-text key={f.email}>{f.email}: {f.error}</s-text>
@@ -145,8 +147,8 @@ export default function CampaignDetail() {
         </s-section>
       )}
 
-      <s-section heading="Preview (first recipient's language)">
-        <iframe title="Email preview" srcDoc={data.html} style={{ width: "100%", height: 720, border: "1px solid #ddd", borderRadius: 8 }} />
+      <s-section heading="Vista previa (idioma del primer destinatario)">
+        <iframe title="Vista previa del correo" srcDoc={data.html} style={{ width: "100%", height: 720, border: "1px solid #ddd", borderRadius: 8 }} />
       </s-section>
     </s-page>
   );

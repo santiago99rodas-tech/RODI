@@ -82,6 +82,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 const GRANT_MONTHS = [1, 3, 12];
+const STATUS_LABEL: Record<string, string> = {
+  FREE: "Free", PROMOTIONAL_ACCESS: "Acceso de cortesía", ACTIVE: "Activa", PAST_DUE: "Pago vencido", CANCELLED: "Cancelada", EXPIRED: "Vencida",
+};
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { session, admin } = await authenticate.admin(request);
@@ -90,45 +93,45 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const customerId = String(form.get("customerId") ?? "");
   const intent = String(form.get("intent") ?? "");
 
-  if (!/^\d+$/.test(customerId)) return { error: "Invalid customer id" };
+  if (!/^\d+$/.test(customerId)) return { error: "ID de cliente no válido" };
 
   try {
     if (intent === "grant") {
       const months = Number(form.get("months"));
-      if (!GRANT_MONTHS.includes(months)) return { error: "Invalid duration" };
+      if (!GRANT_MONTHS.includes(months)) return { error: "Duración no válida" };
       const wasClub = (await resolveMembership(shop, customerId)).isClub;
       await applyManualMembership(admin, shop, customerId, { kind: "grant", months });
-      const granted = `Granted ${months} month${months === 1 ? "" : "s"} of Club access`;
+      const granted = `${months === 1 ? "Se otorgó 1 mes" : `Se otorgaron ${months} meses`} de acceso Club`;
       if (wasClub) return { ok: granted };
       // Someone who was not Club has just become Club: welcome them automatically (once per customer).
       const welcome = await sendWelcomeClubEmailAuto(admin, shop, customerId);
-      if (welcome.outcome === "sent") return { ok: `${granted} and sent the welcome email` };
-      if (welcome.outcome === "duplicate") return { ok: `${granted} (they already got the welcome email)` };
-      return { ok: `${granted}. The welcome email was not sent (${welcome.detail ?? welcome.outcome})` };
+      if (welcome.outcome === "sent") return { ok: `${granted} y se envió el correo de bienvenida` };
+      if (welcome.outcome === "duplicate") return { ok: `${granted} (ya había recibido el correo de bienvenida)` };
+      return { ok: `${granted}. No se envió el correo de bienvenida (${welcome.detail ?? welcome.outcome})` };
     }
     if (intent === "welcome") {
       // Explicit admin action: emails the customer the Club welcome. Needs an email and an active Club membership.
       const membership = await resolveMembership(shop, customerId);
-      if (!membership.isClub) return { error: "Only Club members get the welcome email" };
+      if (!membership.isClub) return { error: "Solo los miembros Club reciben el correo de bienvenida" };
       const email = String(form.get("email") ?? "");
-      if (!email) return { error: "This customer has no email address" };
+      if (!email) return { error: "Este cliente no tiene correo electrónico" };
       const result = await sendWelcomeClubEmail(admin, shop, customerId, email);
-      if (result.outcome === "sent") return { ok: `Welcome email sent to ${email}` };
-      return { error: `Welcome email not sent: ${result.detail ?? result.outcome}` };
+      if (result.outcome === "sent") return { ok: `Correo de bienvenida enviado a ${email}` };
+      return { error: `No se envió el correo de bienvenida: ${result.detail ?? result.outcome}` };
     }
     if (intent === "expire") {
       await applyManualMembership(admin, shop, customerId, { kind: "expire" });
-      return { ok: "Club access expired" };
+      return { ok: "El acceso Club venció" };
     }
     if (intent === "free") {
       await applyManualMembership(admin, shop, customerId, { kind: "free" });
-      return { ok: "Customer set to Free" };
+      return { ok: "El cliente pasó a Free" };
     }
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "Could not update membership" };
+    return { error: err instanceof Error ? err.message : "No se pudo actualizar la membresía" };
   }
 
-  return { error: "Unknown action" };
+  return { error: "Acción desconocida" };
 };
 
 function CustomerRow({ customer, fetcher }: { customer: CustomerRowData; fetcher: ReturnType<typeof useFetcher> }) {
@@ -139,50 +142,50 @@ function CustomerRow({ customer, fetcher }: { customer: CustomerRowData; fetcher
   return (
     <s-box padding="base" borderWidth="base" borderRadius="base">
       <s-stack gap="base">
-        <s-text fontWeight="bold">{customer.email ?? customer.name ?? `Customer ${customer.id}`}</s-text>
+        <s-text fontWeight="bold">{customer.email ?? customer.name ?? `Cliente ${customer.id}`}</s-text>
         <s-text tone="neutral">
           {customer.name ? `${customer.name} · ` : ""}ID {customer.id}
         </s-text>
         <s-text>
-          {customer.isClub ? "Club" : "Free"} — {customer.status}
-          {customer.accessUntil ? ` · until ${new Date(customer.accessUntil).toLocaleString()}` : ""}
-          {customer.source ? ` · source: ${customer.source}` : ""}
+          {customer.isClub ? "Club" : "Free"} — {STATUS_LABEL[customer.status] ?? customer.status}
+          {customer.accessUntil ? ` · hasta ${new Date(customer.accessUntil).toLocaleString("es-CO")}` : ""}
+          {customer.source ? ` · origen: ${customer.source}` : ""}
         </s-text>
 
         <s-stack direction="inline" gap="base">
           {GRANT_MONTHS.map((m) => (
             <s-button key={m} disabled={busy} onClick={() => submit("grant", { months: String(m) })}>
-              {`Grant ${m} month${m === 1 ? "" : "s"}`}
+              {`Dar ${m} ${m === 1 ? "mes" : "meses"}`}
             </s-button>
           ))}
           <s-button
             disabled={busy || !customer.isClub || !customer.email}
             onClick={() => {
-              if (!window.confirm(`Send the Club welcome email to ${customer.email}?`)) return;
+              if (!window.confirm(`¿Enviar el correo de bienvenida Club a ${customer.email}?`)) return;
               submit("welcome", { email: customer.email ?? "" });
             }}
           >
-            Send welcome email
+            Enviar correo de bienvenida
           </s-button>
           <s-button
             tone="critical"
             disabled={busy}
             onClick={() => {
-              if (!window.confirm(`Expire Club access for ${customer.email ?? customer.id} right now?`)) return;
+              if (!window.confirm(`¿Vencer ahora el acceso Club de ${customer.email ?? customer.id}?`)) return;
               submit("expire");
             }}
           >
-            Expire now
+            Vencer ahora
           </s-button>
           <s-button
             tone="critical"
             disabled={busy}
             onClick={() => {
-              if (!window.confirm(`Reset ${customer.email ?? customer.id} to Free (clears dates and the Club metafield)?`)) return;
+              if (!window.confirm(`¿Pasar ${customer.email ?? customer.id} a Free? (borra las fechas y el metafield de Club)`)) return;
               submit("free");
             }}
           >
-            Set to Free
+            Pasar a Free
           </s-button>
         </s-stack>
       </s-stack>
@@ -206,26 +209,26 @@ export default function Memberships() {
   const search = () => navigate(`?q=${encodeURIComponent(query.trim())}`);
 
   return (
-    <s-page heading="RODI Club — memberships">
-      <s-section heading="Find a customer">
+    <s-page heading="RODI Club — membresías">
+      <s-section heading="Buscar un cliente">
         <s-stack gap="base">
           <s-paragraph>
-            Search by email or name, then gift, expire or reset Club access. Changes take effect on the server
-            immediately and update the customer&rsquo;s club_access_until metafield so the storefront agrees.
+            Busca por correo o nombre y luego regala, vence o reinicia el acceso Club. Los cambios se aplican en el
+            servidor de inmediato y actualizan el metafield club_access_until del cliente para que la tienda coincida.
           </s-paragraph>
           <s-text-field
-            label="Email or name"
+            label="Correo o nombre"
             value={query}
             onInput={(e: any) => setQuery(e.target.value)}
           ></s-text-field>
-          <s-button onClick={search}>Search</s-button>
+          <s-button onClick={search}>Buscar</s-button>
         </s-stack>
       </s-section>
 
       {q && (
-        <s-section heading={`Results for “${q}” (${found.length})`}>
+        <s-section heading={`Resultados para “${q}” (${found.length})`}>
           {found.length === 0 ? (
-            <s-paragraph>No customers found.</s-paragraph>
+            <s-paragraph>No se encontraron clientes.</s-paragraph>
           ) : (
             <s-stack gap="base">
               {found.map((c) => (
@@ -236,9 +239,9 @@ export default function Memberships() {
         </s-section>
       )}
 
-      <s-section heading="Recently changed memberships">
+      <s-section heading="Membresías cambiadas recientemente">
         {recentRows.length === 0 ? (
-          <s-paragraph>No memberships yet.</s-paragraph>
+          <s-paragraph>Aún no hay membresías.</s-paragraph>
         ) : (
           <s-stack gap="base">
             {recentRows.map((c) => (

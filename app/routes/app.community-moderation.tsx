@@ -40,7 +40,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const status = String(form.get("status"));
 
   if (!["published", "flagged", "removed"].includes(status)) {
-    return { error: "Invalid status" };
+    return { error: "Estado no válido" };
   }
 
   if (type === "question") {
@@ -54,13 +54,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   } else if (type === "recommendation") {
     await db.communityRecommendation.updateMany({ where: { id, shop }, data: { status } });
   } else {
-    return { error: "Invalid type" };
+    return { error: "Tipo no válido" };
   }
 
   return { ok: true };
 };
 
 type StatusValue = "published" | "flagged" | "removed";
+const STATUS_LABEL: Record<string, string> = { published: "Publicado", flagged: "Marcado", removed: "Retirado" };
 
 function StatusButtons({ type, id, current, fetcher }: { type: string; id: string; current: string; fetcher: ReturnType<typeof useFetcher> }) {
   const options: StatusValue[] = ["published", "flagged", "removed"];
@@ -72,7 +73,7 @@ function StatusButtons({ type, id, current, fetcher }: { type: string; id: strin
           variant={status === current ? "primary" : "secondary"}
           onClick={() => fetcher.submit({ type, id, status }, { method: "POST" })}
         >
-          {status}
+          {STATUS_LABEL[status]}
         </s-button>
       ))}
     </s-stack>
@@ -91,10 +92,10 @@ export default function CommunityModeration() {
   }, [fetcher.data, shopify]);
 
   return (
-    <s-page heading="Community moderation">
-      <s-section heading={`Questions (${questions.length})`}>
+    <s-page heading="Moderación de la comunidad">
+      <s-section heading={`Preguntas (${questions.length})`}>
         {questions.length === 0 ? (
-          <s-paragraph>No questions posted yet.</s-paragraph>
+          <s-paragraph>Aún no hay preguntas publicadas.</s-paragraph>
         ) : (
           <s-stack gap="base">
             {questions.map((q) => (
@@ -102,7 +103,7 @@ export default function CommunityModeration() {
                 <s-stack gap="base">
                   <s-text fontWeight="bold">{q.title}</s-text>
                   <s-text tone="neutral">
-                    {q.authorName} · {new Date(q.createdAt).toLocaleDateString()} · status: {q.status}
+                    {q.authorName} · {new Date(q.createdAt).toLocaleDateString("es-CO")} · estado: {STATUS_LABEL[q.status] ?? q.status}
                   </s-text>
                   <s-paragraph>{q.body}</s-paragraph>
                   <StatusButtons type="question" id={q.id} current={q.status} fetcher={fetcher} />
@@ -112,7 +113,7 @@ export default function CommunityModeration() {
                         <s-box key={a.id} padding="base" background="subdued" borderRadius="base">
                           <s-stack gap="base">
                             <s-text tone="neutral">
-                              {a.authorName} answered · status: {a.status}
+                              {a.authorName} respondió · estado: {STATUS_LABEL[a.status] ?? a.status}
                             </s-text>
                             <s-paragraph>{a.body}</s-paragraph>
                             <StatusButtons type="answer" id={a.id} current={a.status} fetcher={fetcher} />
@@ -128,9 +129,9 @@ export default function CommunityModeration() {
         )}
       </s-section>
 
-      <s-section heading={`Recommendations (${recommendations.length})`}>
+      <s-section heading={`Recomendaciones (${recommendations.length})`}>
         {recommendations.length === 0 ? (
-          <s-paragraph>No recommendations posted yet.</s-paragraph>
+          <s-paragraph>Aún no hay recomendaciones publicadas.</s-paragraph>
         ) : (
           <s-stack gap="base">
             {recommendations.map((r) => (
@@ -138,7 +139,7 @@ export default function CommunityModeration() {
                 <s-stack gap="base">
                   <s-text fontWeight="bold">{r.title}</s-text>
                   <s-text tone="neutral">
-                    {r.authorName} · {new Date(r.createdAt).toLocaleDateString()} · status: {r.status}
+                    {r.authorName} · {new Date(r.createdAt).toLocaleDateString("es-CO")} · estado: {STATUS_LABEL[r.status] ?? r.status}
                   </s-text>
                   <s-paragraph>{r.body}</s-paragraph>
                   <StatusButtons type="recommendation" id={r.id} current={r.status} fetcher={fetcher} />

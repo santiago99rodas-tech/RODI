@@ -48,60 +48,60 @@ export default function Backups() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      shopify.toast.show(`Download failed: ${(e as Error).message}`, { isError: true });
+      shopify.toast.show(`Falló la descarga: ${(e as Error).message}`, { isError: true });
     }
   };
 
   useEffect(() => {
     if (!fetcher.data) return;
     const d = fetcher.data;
-    const off = d.ok && d.offsite ? (d.offsite.ok ? " (also uploaded off-server)" : ` (off-server upload FAILED: ${d.offsite.error})`) : "";
-    shopify.toast.show(d.ok ? `Backup created: ${d.name}${off}` : `Backup failed: ${d.error}`, { isError: !d.ok || (!!d.offsite && !d.offsite.ok) });
+    const off = d.ok && d.offsite ? (d.offsite.ok ? " (también se subió fuera del servidor)" : ` (FALLÓ la subida fuera del servidor: ${d.offsite.error})`) : "";
+    shopify.toast.show(d.ok ? `Respaldo creado: ${d.name}${off}` : `Falló el respaldo: ${d.error}`, { isError: !d.ok || (!!d.offsite && !d.offsite.ok) });
   }, [fetcher.data, shopify]);
 
   return (
-    <s-page heading="Database backups">
+    <s-page heading="Respaldos de la base de datos">
       <s-button slot="primary-action" onClick={() => fetcher.submit({}, { method: "POST" })} disabled={running}>
-        {running ? "Backing up…" : "Back up now"}
+        {running ? "Respaldando…" : "Respaldar ahora"}
       </s-button>
-      <s-section heading="Status">
+      <s-section heading="Estado">
         <s-paragraph>
-          Automatic snapshots: {data.enabled ? `every ${data.hours} hours, plus one shortly after every start or deploy` : "OFF (BACKUP_ENABLED=false)"}.
+          Copias automáticas: {data.enabled ? `cada ${data.hours} horas, más una poco después de cada inicio o despliegue` : "DESACTIVADAS (BACKUP_ENABLED=false)"}.
         </s-paragraph>
-        <s-paragraph>Database size: {data.dbBytes == null ? "unknown" : kb(data.dbBytes)}. Stored in: {data.dir}</s-paragraph>
+        <s-paragraph>Tamaño de la base de datos: {data.dbBytes == null ? "desconocido" : kb(data.dbBytes)}. Guardadas en: {data.dir}</s-paragraph>
         <s-paragraph>
-          Retention: the 8 newest snapshots plus the newest one of each of the last 30 days. Snapshots live in the same
-          persistent volume as the database, so a copy off the server is what protects you if the server or the volume is lost.
+          Retención: las 8 copias más recientes más la más reciente de cada uno de los últimos 30 días. Las copias viven en el mismo
+          volumen persistente que la base de datos, así que una copia fuera del servidor es lo que te protege si se pierde el servidor o el volumen.
         </s-paragraph>
         <s-paragraph>
-          Off-server copy:{" "}
+          Copia fuera del servidor:{" "}
           {data.offsite
             ? data.offsite.last
               ? data.offsite.last.ok
-                ? `ON (bucket ${data.offsite.bucket}). Last upload ${new Date(data.offsite.last.at).toLocaleString()}: ${data.offsite.last.name}`
-                : `ON but the last upload FAILED (${data.offsite.last.error})`
-              : `ON (bucket ${data.offsite.bucket}). Nothing uploaded since the last start; the next snapshot will be.`
-            : "OFF. Set the BACKUP_S3_* variables to upload every snapshot to a bucket, or download snapshots below by hand."}
+                ? `ACTIVA (bucket ${data.offsite.bucket}). Última subida ${new Date(data.offsite.last.at).toLocaleString("es-CO")}: ${data.offsite.last.name}`
+                : `ACTIVA pero la última subida FALLÓ (${data.offsite.last.error})`
+              : `ACTIVA (bucket ${data.offsite.bucket}). No se ha subido nada desde el último inicio; la próxima copia sí se subirá.`
+            : "DESACTIVADA. Define las variables BACKUP_S3_* para subir cada copia a un bucket, o descarga las copias a mano abajo."}
         </s-paragraph>
       </s-section>
-      <s-section heading={`Snapshots (${data.backups.length})`}>
+      <s-section heading={`Copias (${data.backups.length})`}>
         {data.backups.length === 0 ? (
-          <s-paragraph>No snapshots yet. The first one is taken a couple of minutes after the app starts.</s-paragraph>
+          <s-paragraph>Aún no hay copias. La primera se toma un par de minutos después de que la app inicia.</s-paragraph>
         ) : (
           data.backups.map((b) => (
             <s-paragraph key={b.name}>
-              {b.name} — {kb(b.bytes)} — {new Date(b.createdAt).toLocaleString()}{" "}
+              {b.name} — {kb(b.bytes)} — {new Date(b.createdAt).toLocaleString("es-CO")}{" "}
               <s-button variant="tertiary" onClick={() => download(b.name)}>
-                Download
+                Descargar
               </s-button>
             </s-paragraph>
           ))
         )}
       </s-section>
-      <s-section heading="How to restore">
+      <s-section heading="Cómo restaurar">
         <s-paragraph>
-          Stop the service, open a console on it and run: node scripts/restore-backup.mjs &lt;snapshot file name&gt;. The current
-          database is kept as dev.sqlite.before-restore-&lt;time&gt;. Then start the service again.
+          Detén el servicio, abre una consola en él y ejecuta: node scripts/restore-backup.mjs &lt;nombre del archivo de la copia&gt;. La base
+          de datos actual se conserva como dev.sqlite.before-restore-&lt;hora&gt;. Luego vuelve a iniciar el servicio.
         </s-paragraph>
       </s-section>
     </s-page>
