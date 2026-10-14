@@ -30,17 +30,29 @@ const ICONS = {
   box: '<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"/><path d="m7.5 4.27 9 5.15"/>',
 };
 
-// source image (theme asset) -> output name, max width, quality
+// source image -> output name, width, height. A leading "@" means the image comes from the RODI-owned art in
+// ../../New Assets (the *_rodi.png files); anything else is a theme asset. Output is JPG because many mail clients
+// drop WebP.
+const NEW_ASSETS = path.join(__dirname, "..", "..", "New Assets");
 const PHOTOS = [
-  ["grecia2.png", "rodi-email-hero-grecia.jpg", 1200, 600],
-  ["rodi-hero-rome.webp", "rodi-email-hero-roma.jpg", 1200, 600],
-  ["rodi-hero-barcelona.webp", "rodi-email-hero-barcelona.jpg", 1200, 600],
-  ["lisboa1.png", "rodi-email-hero-lisboa.jpg", 1200, 600],
-  ["rodi-hero-bruges.webp", "rodi-email-hero-brujas.jpg", 1200, 600],
-  ["marruecos2.png", "rodi-email-thumb-marruecos.jpg", 440, 480],
-  ["turquia2.png", "rodi-email-thumb-turquia.jpg", 440, 480],
-  ["grecia2.png", "rodi-email-thumb-grecia.jpg", 440, 480],
+  ["@Portugal", "rodi-email-hero-portugal.jpg", 1200, 600],
+  ["@inicio_manifiesto", "rodi-email-hero-manifiesto.jpg", 1200, 600],
+  ["@Inicio_Journal (tarjeta 3)", "rodi-email-hero-cena.jpg", 1200, 600],
+  ["@inicio_hero-rodi", "rodi-email-hero-terraza.jpg", 1200, 600],
+  ["@Turquía", "rodi-email-hero-globos.jpg", 1200, 600],
+  ["@Marruecos", "rodi-email-thumb-marruecos.jpg", 440, 480],
+  ["@Turquía", "rodi-email-thumb-turquia.jpg", 440, 480],
+  ["@grecia", "rodi-email-thumb-grecia.jpg", 440, 480],
 ];
+function source(src) {
+  if (!src.startsWith("@")) return path.join(THEME_ASSETS, src);
+  const base = src.slice(1);
+  for (const f of [`${base}_rodi.png`, `${base}-rodi.png`, `${base}.png`]) {
+    const full = path.join(NEW_ASSETS, f);
+    if (fs.existsSync(full)) return full;
+  }
+  throw new Error("Image not found in New Assets: " + base);
+}
 
 (async () => {
   const logoSvg = fs.readFileSync(path.join(THEME_ASSETS, "rodi-logo-black.svg"));
@@ -50,7 +62,7 @@ const PHOTOS = [
     await sharp(Buffer.from(svg), { density: 300 }).resize(96, 96).png().toFile(path.join(OUT, `rodi-email-icon-${name}.png`));
   }
   for (const [src, out, width, height] of PHOTOS) {
-    await sharp(path.join(THEME_ASSETS, src)).resize({ width, height, fit: "cover", position: "attention" }).jpeg({ quality: 78, mozjpeg: true }).toFile(path.join(OUT, out));
+    await sharp(source(src)).resize({ width, height, fit: "cover", position: "attention" }).jpeg({ quality: 78, mozjpeg: true }).toFile(path.join(OUT, out));
   }
   for (const f of fs.readdirSync(OUT)) console.log(f.padEnd(40), Math.round(fs.statSync(path.join(OUT, f)).size / 1024) + " KB");
 })().catch((e) => { console.error(e); process.exit(1); });

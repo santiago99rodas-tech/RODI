@@ -16,7 +16,7 @@ const communityShare = {
     const S = copy("community-share", lang);
     return [
       K.header({ tagline: tagline(lang) }),
-      K.hero({ src: "rodi-email-hero-lisboa.jpg", alt: "" }),
+      K.hero({ src: "rodi-email-hero-cena.jpg", alt: "" }),
       K.headline(S.h1),
       K.para(S.p, { max: 460 }),
       K.button({ label: S.cta, url: T.link.community }),
@@ -46,7 +46,7 @@ const referral = {
     const S = copy("referral", lang);
     return [
       K.header({ tagline: tagline(lang) }),
-      K.hero({ src: "rodi-email-hero-barcelona.jpg", alt: "" }),
+      K.hero({ src: "rodi-email-hero-cena.jpg", alt: "" }),
       K.headline(S.h1),
       K.para(S.p, { max: 440 }),
       K.codeBox({ label: S.label, code: "{{ referral_code }}", icon: "lock", spacing: 10, size: 42 }),
@@ -76,7 +76,7 @@ const winback = {
     const S = copy("winback", lang);
     return [
       K.header({ tagline: tagline(lang), rule: true }),
-      K.hero({ src: "rodi-email-hero-roma.jpg", alt: "" }),
+      K.hero({ src: "rodi-email-hero-globos.jpg", alt: "" }),
       K.headline(S.h1, { rule: false, padTop: 34 }),
       K.para(S.p, { padTop: 14, max: 460 }),
       K.columns({
@@ -118,7 +118,7 @@ const dispatch = {
     const item = `{% for item in dispatch.items %}${K.para("<strong>{{ item.title }}</strong><br>{{ item.text }}{% if item.url != blank %}<br><a href=\"{{ item.url }}\">" + S.read + " →</a>{% endif %}", { padTop: 18, max: 460 })}{% endfor %}`;
     return [
       K.header({ tagline: tagline(lang) }),
-      K.hero({ src: "rodi-email-hero-lisboa.jpg", alt: "" }),
+      K.hero({ src: "rodi-email-hero-manifiesto.jpg", alt: "" }),
       K.para(S.eyebrow.toUpperCase(), { padTop: 26, max: 460 }),
       K.headline("{{ dispatch.title }}", { rule: false, padTop: 8 }),
       K.para("{{ dispatch.intro }}", { padTop: 14, max: 460 }),

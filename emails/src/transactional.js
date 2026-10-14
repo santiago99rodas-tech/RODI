@@ -40,7 +40,7 @@ const abandonedCheckout = {
     });
     return [
       K.header({ tagline: tagline(lang) }),
-      K.hero({ src: "rodi-email-hero-brujas.jpg", inset: 24 }),
+      K.hero({ src: "rodi-email-hero-portugal.jpg", inset: 24 }),
       K.headline(S.h1, { rule: false, size: 40, padTop: 30 }),
       K.para(S.p, { padTop: 14, max: 440 }),
       lineItems({ showQty: false }),
@@ -77,7 +77,7 @@ ${totalsRow(S.total, "{{ total_price | money_with_currency }}", { bold: true })}
     const address = `{% if shipping_address %}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="px" style="padding:22px 40px 0;font-family:${f.body};font-size:13px;line-height:1.7;color:${c.body};"><div style="font-size:10.5px;letter-spacing:2.4px;text-transform:uppercase;color:${c.muted};padding-bottom:4px;">${S.shipTo}</div>{{ shipping_address.name }}<br>{{ shipping_address.address1 }}{% if shipping_address.address2 != blank %}, {{ shipping_address.address2 }}{% endif %}<br>{{ shipping_address.city }}{% if shipping_address.province != blank %}, {{ shipping_address.province }}{% endif %} {{ shipping_address.zip }}<br>{{ shipping_address.country }}</td></tr></table>{% endif %}`;
     return [
       K.header({ tagline: "", rule: true }).replace(/<div style="font-family:[^>]*>\s*<\/div>/, ""),
-      K.hero({ src: "rodi-email-hero-brujas.jpg", inset: 24 }),
+      K.hero({ src: "rodi-email-hero-portugal.jpg", inset: 24 }),
       `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="px" align="center" style="padding:34px 56px 0;"><h1 class="h1" style="margin:0;font-family:${f.heading};font-weight:400;font-size:42px;line-height:1.06;letter-spacing:-0.5px;color:${c.ink};">${S.h1}</h1>
 <div style="padding-top:14px;font-family:${f.body};font-size:11px;letter-spacing:3.4px;text-transform:uppercase;font-weight:500;color:${c.gold};">${S.eyebrow}</div></td></tr></table>`,
       K.para(S.p, { padTop: 18, max: 440, size: 15 }),

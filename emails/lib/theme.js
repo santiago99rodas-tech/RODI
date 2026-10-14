@@ -3,7 +3,7 @@ module.exports = {
   // Where the images from ./assets are hosted. Stand-ins live in the theme's assets; move them to the shop's Files
   // (https://rodiclub.com/cdn/shop/files/) when the final art is uploaded.
   // Bump when an image in ./assets is replaced: the shop CDN caches the old file per URL.
-  ASSET_VERSION: 2,
+  ASSET_VERSION: 3,
   ASSET_BASE: "https://rodiclub.com/cdn/shop/t/4/assets/",
   color: {
     page: "#F6F2EA",

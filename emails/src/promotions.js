@@ -23,7 +23,7 @@ const limitedOffer = {
     const S = copy("limited-offer", lang);
     return [
       K.header({ tagline: tagline(lang) }),
-      K.hero({ src: "rodi-email-hero-barcelona.jpg", alt: "" }),
+      K.hero({ src: "rodi-email-hero-cena.jpg", alt: "" }),
       K.headline(S.h1),
       K.para(`{{ offer_text | default: "${S.pDefault}" }}`, { max: 460 }),
       K.button({ label: S.cta, url: "{% if cta_url %}{{ cta_url }}{% else %}" + T.link.benefits + "{% endif %}" }),
@@ -54,7 +54,7 @@ const newBenefits = {
     const icons = ["pin", "globe", "briefcase", "compass"];
     return [
       K.header({ tagline: tagline(lang), rule: true }),
-      K.heroOverlay({ src: "rodi-email-hero-brujas.jpg", height: 230, align: "right", panelWidth: 270, html: side }),
+      K.heroOverlay({ src: "rodi-email-hero-terraza.jpg", height: 230, align: "right", panelWidth: 270, html: side }),
       K.headline(S.h1, { size: 46, rule: false, padTop: 34 }),
       K.para(S.p, { padTop: 14, color: "#6B6862", max: 460 }),
       K.rows({ items: S.rows.map(([title, text], i) => ({ icon: icons[i], title, text, url: T.link.benefits })) }),
@@ -80,7 +80,7 @@ const discountCode = {
 <div style="width:34px;height:1px;background:${c.gold};margin-top:16px;font-size:0;line-height:0;">&nbsp;</div>`;
     return [
       K.header({ tagline: tagline(lang), rule: true }),
-      K.heroOverlay({ src: "rodi-email-hero-grecia.jpg", height: 330, html: overlay }),
+      K.heroOverlay({ src: "rodi-email-hero-globos.jpg", height: 330, html: overlay }),
       K.para(S.p, { padTop: 28, size: 15, max: 460 }),
       K.codeBox({ label: S.label, code: "{{ discount_code }}", spacing: 9, size: 34 }),
       K.note(S.note),
@@ -106,7 +106,7 @@ const newProducts = {
 <p style="margin:16px 0 0;font-family:${f.body};font-size:14.5px;line-height:1.65;color:${c.body};">${S.p}</p></div>`;
     return [
       K.header({ tagline: tagline(lang), rule: true }),
-      K.heroOverlay({ src: "rodi-email-hero-roma.jpg", height: 340, html: overlay }),
+      K.heroOverlay({ src: "rodi-email-hero-terraza.jpg", height: 340, html: overlay }),
       K.productCards({ limit: 3, badge: S.badge, padTop: 30 }),
       K.button({ label: S.cta, url: "{% if cta_url %}{{ cta_url }}{% else %}" + T.link.shop + "{% endif %}", padTop: 32, radius: 2 }),
       K.footer({ lang, quote: tagline(lang), nav: false, marketing: true }),
@@ -125,7 +125,7 @@ const chapterLaunch = {
   sample: { chapter: { name: "Lisboa", tagline: "", image: "", url: "https://rodiclub.com/pages/chapters-guide" } },
   build(lang) {
     const S = copy("chapter-launch", lang);
-    const heroImg = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding:0 24px;"><img src="{% if chapter.image != blank %}{{ chapter.image }}{% else %}${K.img("rodi-email-hero-roma.jpg")}{% endif %}" width="552" alt="{{ chapter.name | escape }}" style="width:100%;max-width:552px;height:auto;"></td></tr></table>`;
+    const heroImg = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding:0 24px;"><img src="{% if chapter.image != blank %}{{ chapter.image }}{% else %}${K.img("rodi-email-hero-terraza.jpg")}{% endif %}" width="552" alt="{{ chapter.name | escape }}" style="width:100%;max-width:552px;height:auto;"></td></tr></table>`;
     const kicker = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="px" align="center" style="padding:20px 40px 0;"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
 <td width="70" style="width:70px;"><div style="height:1px;background:${c.gold};font-size:0;line-height:0;">&nbsp;</div></td>
 <td align="center" style="padding:0 16px;font-family:${f.body};font-size:12px;letter-spacing:5px;text-transform:uppercase;color:${c.goldInk};">{{ chapter.name }}</td>

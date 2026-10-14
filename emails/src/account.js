@@ -16,7 +16,7 @@ const welcomeClub = {
     const S = copy("welcome-club", lang);
     return [
       K.header({ tagline: tagline(lang) }),
-      K.hero({ src: "rodi-email-hero-barcelona.jpg", inset: 0 }),
+      K.hero({ src: "rodi-email-hero-manifiesto.jpg", inset: 0 }),
       K.headline(S.h1, { size: 46 }),
       K.para(S.p, { max: 460 }),
       K.columns({
@@ -50,7 +50,7 @@ const accountReady = {
 <p style="margin:16px 0 0;font-family:${f.body};font-size:16px;line-height:1.6;color:${c.body};">${S.p}<br><span style="color:${c.muted};font-size:13px;">${S.until}</span></p></td></tr></table>`;
     return [
       K.header({ tagline: "" }).replace(/<div style="font-family:[^>]*>\s*<\/div>/, ""),
-      K.hero({ src: "rodi-email-hero-lisboa.jpg", inset: 24 }),
+      K.hero({ src: "rodi-email-hero-manifiesto.jpg", inset: 24 }),
       lead,
       K.list({ padTop: 30, items: S.items.map(([icon, title, text]) => ({ icon, title, text })) }),
       K.button({ label: S.cta, url: T.link.home, dark: true, padTop: 14 }),
@@ -82,7 +82,7 @@ const verificationCode = {
       K.button({ label: S.cta, url: "{{ shop.url }}", padTop: 28 }),
       K.para(`${S.didnt} <a href="${T.link.contact}" style="color:${c.goldInk};">${S.support}</a>`, { padTop: 26, size: 13 }),
       K.spacer(26),
-      K.hero({ src: "rodi-email-hero-brujas.jpg" }),
+      K.hero({ src: "rodi-email-hero-portugal.jpg" }),
       K.footer({ lang, quote: "", nav: false, wordmark: false, marketing: false }),
     ].join("\n");
   },
