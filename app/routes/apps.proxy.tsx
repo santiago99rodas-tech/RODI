@@ -48,7 +48,7 @@ type ReadinessTripInput = {
   budgetTotal: number | null;
   documents: { id: string }[];
   packPrefs?: string | null;
-  checklist: { done: boolean; key?: string | null; source?: string | null }[];
+  checklist: { done: boolean; key?: string | null; source?: string | null; category?: string | null }[];
   days: { activities: { id: string }[] }[];
 };
 

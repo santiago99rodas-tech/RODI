@@ -49,6 +49,10 @@ export function parsePackPrefs(stored: string | null | undefined): PackPrefs | n
   try { return sanitizePackPrefs(JSON.parse(stored)); } catch { return null; }
 }
 
+// Categories the Club list uses for items a member types in by hand. Rows in any other category are the old starter checklist
+// (documents, clothing...) from before the member was Club: they stay visible but do not count toward the list.
+export const PACK_CATEGORIES = ["docs", "prep", "clothes", "shoes", "care", "tech", "health", "act", "carry"] as const;
+
 // A smart item key looks like "tee", "act:beach:0" or "f:documents:2" (Free template); keep it tame.
 export const PACK_KEY = /^[a-z0-9][a-z0-9:._-]{0,59}$/;
 
@@ -56,13 +60,13 @@ export const PACK_KEY = /^[a-z0-9][a-z0-9:._-]{0,59}$/;
 // whole list (rows only exist for items that were ticked or edited), plus anything the member typed in by hand.
 export function packingRatio(
   prefs: PackPrefs | null,
-  checklist: { done: boolean; key?: string | null; source?: string | null }[],
+  checklist: { done: boolean; key?: string | null; source?: string | null; category?: string | null }[],
 ): number {
   if (!prefs) {
     return checklist.length ? checklist.filter((c) => c.done).length / checklist.length : 0;
   }
   const smartDone = checklist.filter((c) => c.key && c.done).length;
-  const manual = checklist.filter((c) => !c.key && c.source !== "smart");
+  const manual = checklist.filter((c) => !c.key && c.source !== "smart" && (PACK_CATEGORIES as readonly string[]).includes(c.category ?? ""));
   const total = prefs.total + manual.length;
   if (!total) return 0;
   return Math.min(1, (smartDone + manual.filter((c) => c.done).length) / total);
