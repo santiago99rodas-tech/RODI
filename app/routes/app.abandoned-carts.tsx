@@ -52,6 +52,11 @@ export default function AbandonedCarts() {
           <s-text fontWeight="bold">{settings.enabled ? "Automatic reminders are ON" : "Automatic reminders are OFF"}</s-text>
           <s-text>Waiting time: {settings.delayMinutes} minutes after the cart was left (up to {settings.maxAgeHours} hours)</s-text>
           <s-text>Who: {settings.audience === "all" ? "every customer with an email" : "customers subscribed to marketing emails"}</s-text>
+          <s-text tone="neutral">
+            What the app received: ABANDONED_CART_ENABLED = {settings.received.enabled}
+            {settings.received.enabled === '"true"' ? " (correct)" : " (it must be exactly true, lowercase, no quotes or spaces)"}; ABANDONED_CART_AUDIENCE ={" "}
+            {settings.received.audience} (only the value all changes anything; anything else means subscribed customers only).
+          </s-text>
           <s-text>Resend: {resendReady ? "ready" : "not configured"}</s-text>
           <s-paragraph>
             To turn it on, set ABANDONED_CART_ENABLED=true in EasyPanel and redeploy. Optional: ABANDONED_CART_DELAY_MINUTES (default 60),

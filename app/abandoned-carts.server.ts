@@ -20,7 +20,16 @@ const delayMinutes = () => Number(process.env.ABANDONED_CART_DELAY_MINUTES) || 6
 const maxAgeHours = () => Number(process.env.ABANDONED_CART_MAX_AGE_HOURS) || 48;
 const audience = () => (process.env.ABANDONED_CART_AUDIENCE === "all" ? "all" : "subscribed");
 export const abandonedCartsEnabled = () => process.env.ABANDONED_CART_ENABLED === "true";
-export const abandonedCartSettings = () => ({ enabled: abandonedCartsEnabled(), delayMinutes: delayMinutes(), maxAgeHours: maxAgeHours(), audience: audience() });
+// `received` shows exactly what the running app sees in the two switches (not secrets), so a typo in EasyPanel is visible
+// from the admin page instead of guessed at.
+const received = (name: string) => (process.env[name] === undefined ? "not set" : JSON.stringify(process.env[name]));
+export const abandonedCartSettings = () => ({
+  enabled: abandonedCartsEnabled(),
+  delayMinutes: delayMinutes(),
+  maxAgeHours: maxAgeHours(),
+  audience: audience(),
+  received: { enabled: received("ABANDONED_CART_ENABLED"), audience: received("ABANDONED_CART_AUDIENCE") },
+});
 
 const COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_PER_RUN = 25;
