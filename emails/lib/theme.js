@@ -10,7 +10,7 @@ module.exports = {
     card: "#FFFDF9",
     ink: "#1C1B1A",
     body: "#3A3733",
-    muted: "#8B8A86",
+    muted: "#6B6A66",
     gold: "#A88543",
     goldInk: "#7A6038",
     line: "#E3D9C6",

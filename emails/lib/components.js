@@ -106,10 +106,10 @@ function para(html, { align = "center", size = 16, color = c.body, padTop = 22, 
 
 function button({ label, url, dark = false, radius = 999, padTop = 30, arrow = true, wide = false }) {
   const bg = dark ? c.ink : c.gold;
-  const fg = dark ? c.soft : "#FFFFFF";
+  const fg = dark ? c.soft : c.ink;
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:${padTop}px 24px 0;">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" ${wide ? 'width="100%"' : ""}><tr><td align="center" bgcolor="${bg}" style="background:${bg};border-radius:${radius}px;">
-<a href="${url}" style="display:block;padding:17px ${wide ? 20 : 40}px;font-family:${f.body};font-size:12px;font-weight:500;letter-spacing:2.8px;text-transform:uppercase;color:${fg};text-decoration:none;border-radius:${radius}px;">${label}${arrow ? `&nbsp;&nbsp;<span style="color:${dark ? c.gold : "#FFFFFF"};">&rarr;</span>` : ""}</a>
+<a href="${url}" style="display:block;padding:17px ${wide ? 20 : 40}px;font-family:${f.body};font-size:12px;font-weight:500;letter-spacing:2.8px;text-transform:uppercase;color:${fg};text-decoration:none;border-radius:${radius}px;">${label}${arrow ? `&nbsp;&nbsp;<span style="color:${dark ? c.gold : c.ink};">&rarr;</span>` : ""}</a>
 </td></tr></table></td></tr></table>`;
 }
 
@@ -191,7 +191,7 @@ function productCards({ limit = 3, badge = "", padTop = 28 } = {}) {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
 {% assign pn = products.size %}{% if pn > 3 %}{% assign pn = 3 %}{% endif %}{% assign cw = 100 | divided_by: pn %}{% for p in products limit: ${limit} %}<td class="col{% if forloop.last %} col-last{% endif %}" width="{{ cw }}%" valign="top" align="center" style="width:{{ cw }}%;padding:0 8px;">
 <a href="{{ p.url }}" style="text-decoration:none;color:${c.ink};"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${c.soft}" style="background:${c.soft};max-width:{% if pn == 1 %}340{% elsif pn == 2 %}270{% else %}230{% endif %}px;margin:0 auto;"><tr><td><img src="{{ p.image }}" width="170" alt="{{ p.title | escape }}" style="width:100%;height:auto;"></td></tr></table>
-${badge ? `<div style="padding-top:14px;font-family:${f.body};font-size:10.5px;font-weight:600;letter-spacing:2.6px;text-transform:uppercase;color:${c.gold};">${badge}</div>` : ""}
+${badge ? `<div style="padding-top:14px;font-family:${f.body};font-size:10.5px;font-weight:600;letter-spacing:2.6px;text-transform:uppercase;color:${c.goldInk};">${badge}</div>` : ""}
 <div style="padding-top:6px;font-family:${f.heading};font-size:21px;line-height:1.2;color:${c.ink};">{{ p.title | escape }}</div>
 <div style="padding-top:6px;font-family:${f.body};font-size:13px;line-height:1.6;color:#6B6862;">{{ p.description | strip_html | truncatewords: 8 }}</div></a></td>{% endfor %}
 </tr></table></td></tr></table>`;

@@ -79,7 +79,7 @@ ${totalsRow(S.total, "{{ total_price | money_with_currency }}", { bold: true })}
       K.header({ tagline: "", rule: true }).replace(/<div style="font-family:[^>]*>\s*<\/div>/, ""),
       K.hero({ src: "rodi-email-hero-portugal.jpg", inset: 24 }),
       `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="px" align="center" style="padding:34px 56px 0;"><h1 class="h1" style="margin:0;font-family:${f.heading};font-weight:400;font-size:42px;line-height:1.06;letter-spacing:-0.5px;color:${c.ink};">${S.h1}</h1>
-<div style="padding-top:14px;font-family:${f.body};font-size:11px;letter-spacing:3.4px;text-transform:uppercase;font-weight:500;color:${c.gold};">${S.eyebrow}</div></td></tr></table>`,
+<div style="padding-top:14px;font-family:${f.body};font-size:11px;letter-spacing:3.4px;text-transform:uppercase;font-weight:500;color:${c.goldInk};">${S.eyebrow}</div></td></tr></table>`,
       K.para(S.p, { padTop: 18, max: 440, size: 15 }),
       head,
       lineItems({ showQty: true }),

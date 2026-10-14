@@ -19,7 +19,6 @@ export default function App() {
     <AppProvider apiKey={apiKey}>
       <s-app-nav>
         <s-link href="/app">Home</s-link>
-        <s-link href="/app/additional">Additional page</s-link>
         <s-link href="/app/memberships">Club memberships</s-link>
         <s-link href="/app/membership-backfill">Club launch promo backfill</s-link>
         <s-link href="/app/community-moderation">Community moderation</s-link>
