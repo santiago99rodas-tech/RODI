@@ -43,6 +43,8 @@ model Trip {
   endDate       DateTime?
   status        String    @default("planning")
   coverImageUrl String?
+  // Smart packing preferences (JSON, see app/pack.server.ts). Null until a Club member sets them.
+  packPrefs     String?
   budgetTotal    Float?
   budgetCurrency String   @default("USD")
   createdAt     DateTime  @default(now())
@@ -120,10 +122,15 @@ model ChecklistItem {
   // — lets a Smart Packing regenerate wipe only its own items on a re-run
   // without touching anything the customer added themselves.
   source    String   @default("manual")
+  // Smart packing items are derived in the theme; a row exists only once the member ticks one or changes its quantity.
+  // `key` is the language-neutral id of that item ("tee", "act:beach:0"), `qty` the quantity they chose (null = suggested).
+  key       String?
+  qty       Int?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([tripId])
+  @@index([tripId, key])
 }
 
 model Expense {

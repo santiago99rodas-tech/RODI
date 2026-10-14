@@ -7,6 +7,7 @@ import { SavedCountriesFailure, setCountrySaved, topFavorites } from "../saved-c
 import {
   CALC_CLUB_PLAN_LIMIT, CALC_FREE_PLAN_LIMIT, PANEL_LABELS, budgetCategory, computeTotals, sanitizePlan,
 } from "../calc-plan.server";
+import { PACK_KEY, packingRatio, parsePackPrefs, sanitizePackPrefs } from "../pack.server";
 import { CLUB_NATIONALITY_LIMIT, FREE_NATIONALITY_LIMIT, NATIONALITY_NAMES } from "../nationalities";
 
 // Fase 3 Free-tier limits. Not configurable from Admin yet (no admin UI
@@ -46,7 +47,8 @@ type ReadinessTripInput = {
   endDate: Date | null;
   budgetTotal: number | null;
   documents: { id: string }[];
-  checklist: { done: boolean }[];
+  packPrefs?: string | null;
+  checklist: { done: boolean; key?: string | null; source?: string | null }[];
   days: { activities: { id: string }[] }[];
 };
 
@@ -57,9 +59,7 @@ function computeReadiness(trip: ReadinessTripInput) {
     {
       key: "packing",
       weight: 25,
-      ratio: trip.checklist.length
-        ? trip.checklist.filter((c) => c.done).length / trip.checklist.length
-        : 0,
+      ratio: packingRatio(parsePackPrefs(trip.packPrefs), trip.checklist),
     },
     { key: "budget", weight: 15, ratio: trip.budgetTotal != null ? 1 : 0 },
     {
@@ -72,133 +72,6 @@ function computeReadiness(trip: ReadinessTripInput) {
   ];
   const score = Math.round(buckets.reduce((sum, b) => sum + b.ratio * b.weight, 0));
   return { score, buckets };
-}
-
-// Smart Packing v1 (Fase 3, Milestone 4, Club-only) — a deterministic,
-// rule-based list from the two trip signals that are actually structured
-// today: dates (season) and duration (day count). Trip.destination is a
-// free-text field (not a metaobject), and Activity.category is never
-// populated by any current UI flow, so neither can drive generation yet
-// without a larger change — a documented v1 simplification, not an oversight.
-// Season uses calendar month only (no hemisphere data on the trip), so it's
-// Northern-hemisphere-biased; acceptable for a v1 heuristic.
-// Category keys match the ones rodi-packing.liquid already renders labels
-// for (DEFAULT_CATEGORIES there), so generated items group under the same
-// headings as the manually-seeded default template.
-type SmartLocale = "en" | "es" | "fr" | "it";
-type SmartKey =
-  | "passport" | "travelCards" | "cash" | "charger" | "adapter" | "powerbank"
-  | "firstAid" | "meds" | "shoes" | "heavyCoat" | "scarfGloves" | "beanie"
-  | "thermal" | "lightJacket" | "umbrellaRain" | "summerClothes" | "sunscreen"
-  | "sunglasses" | "midJacket" | "umbrella" | "underwear" | "socks" | "pajamas";
-
-const SMART_LABELS: Record<SmartLocale, Record<SmartKey, string>> = {
-  es: {
-    passport: "Pasaporte / documento de identidad", travelCards: "Tarjetas de viaje y seguro médico",
-    cash: "Efectivo y tarjetas", charger: "Cargador de celular", adapter: "Adaptador de corriente",
-    powerbank: "Power bank", firstAid: "Botiquín básico", meds: "Medicamentos personales",
-    shoes: "Calzado cómodo para caminar", heavyCoat: "Abrigo grueso", scarfGloves: "Bufanda y guantes",
-    beanie: "Gorro", thermal: "Capas térmicas", lightJacket: "Chaqueta ligera",
-    umbrellaRain: "Paraguas o impermeable", summerClothes: "Ropa ligera y traje de baño",
-    sunscreen: "Protector solar", sunglasses: "Gafas de sol", midJacket: "Chaqueta intermedia",
-    umbrella: "Paraguas", underwear: "Ropa interior", socks: "Calcetines", pajamas: "Pijama",
-  },
-  en: {
-    passport: "Passport / ID", travelCards: "Travel cards and health insurance",
-    cash: "Cash and cards", charger: "Phone charger", adapter: "Power adapter",
-    powerbank: "Power bank", firstAid: "Basic first-aid kit", meds: "Personal medication",
-    shoes: "Comfortable walking shoes", heavyCoat: "Heavy coat", scarfGloves: "Scarf and gloves",
-    beanie: "Beanie", thermal: "Thermal layers", lightJacket: "Light jacket",
-    umbrellaRain: "Umbrella or raincoat", summerClothes: "Light clothing and swimsuit",
-    sunscreen: "Sunscreen", sunglasses: "Sunglasses", midJacket: "Mid-weight jacket",
-    umbrella: "Umbrella", underwear: "Underwear", socks: "Socks", pajamas: "Pajamas",
-  },
-  fr: {
-    passport: "Passeport / pièce d'identité", travelCards: "Cartes de voyage et assurance santé",
-    cash: "Espèces et cartes", charger: "Chargeur de téléphone", adapter: "Adaptateur secteur",
-    powerbank: "Batterie externe", firstAid: "Trousse de premiers secours", meds: "Médicaments personnels",
-    shoes: "Chaussures confortables pour marcher", heavyCoat: "Manteau épais", scarfGloves: "Écharpe et gants",
-    beanie: "Bonnet", thermal: "Sous-vêtements thermiques", lightJacket: "Veste légère",
-    umbrellaRain: "Parapluie ou imperméable", summerClothes: "Vêtements légers et maillot de bain",
-    sunscreen: "Crème solaire", sunglasses: "Lunettes de soleil", midJacket: "Veste mi-saison",
-    umbrella: "Parapluie", underwear: "Sous-vêtements", socks: "Chaussettes", pajamas: "Pyjama",
-  },
-  it: {
-    passport: "Passaporto / documento d'identità", travelCards: "Carte di viaggio e assicurazione sanitaria",
-    cash: "Contanti e carte", charger: "Caricatore del telefono", adapter: "Adattatore di corrente",
-    powerbank: "Power bank", firstAid: "Kit di pronto soccorso", meds: "Medicinali personali",
-    shoes: "Scarpe comode per camminare", heavyCoat: "Cappotto pesante", scarfGloves: "Sciarpa e guanti",
-    beanie: "Berretto", thermal: "Strati termici", lightJacket: "Giacca leggera",
-    umbrellaRain: "Ombrello o impermeabile", summerClothes: "Abiti leggeri e costume da bagno",
-    sunscreen: "Crema solare", sunglasses: "Occhiali da sole", midJacket: "Giacca di mezza stagione",
-    umbrella: "Ombrello", underwear: "Biancheria intima", socks: "Calzini", pajamas: "Pigiama",
-  },
-};
-
-const SMART_BASE_ITEMS: { key: SmartKey; category: string }[] = [
-  { key: "passport", category: "documents" },
-  { key: "travelCards", category: "documents" },
-  { key: "cash", category: "documents" },
-  { key: "charger", category: "tech" },
-  { key: "adapter", category: "tech" },
-  { key: "powerbank", category: "tech" },
-  { key: "firstAid", category: "health" },
-  { key: "meds", category: "health" },
-  { key: "shoes", category: "shoes" },
-];
-
-const SMART_SEASON_ITEMS: Record<string, { key: SmartKey; category: string }[]> = {
-  winter: [
-    { key: "heavyCoat", category: "clothing" },
-    { key: "scarfGloves", category: "clothing" },
-    { key: "beanie", category: "clothing" },
-    { key: "thermal", category: "clothing" },
-  ],
-  spring: [
-    { key: "lightJacket", category: "clothing" },
-    { key: "umbrellaRain", category: "accessories" },
-  ],
-  summer: [
-    { key: "summerClothes", category: "clothing" },
-    { key: "sunscreen", category: "toiletries" },
-    { key: "sunglasses", category: "accessories" },
-  ],
-  fall: [
-    { key: "midJacket", category: "clothing" },
-    { key: "umbrella", category: "accessories" },
-  ],
-};
-
-function seasonFor(date: Date): "winter" | "spring" | "summer" | "fall" {
-  const month = date.getMonth();
-  if (month === 11 || month <= 1) return "winter";
-  if (month <= 4) return "spring";
-  if (month <= 7) return "summer";
-  return "fall";
-}
-
-function normalizeSmartLocale(raw: unknown): SmartLocale {
-  const code = typeof raw === "string" ? raw.toLowerCase().slice(0, 2) : "";
-  return code === "es" || code === "fr" || code === "it" ? code : "en";
-}
-
-function buildSmartPackingList(trip: { startDate: Date | null; endDate: Date | null }, locale: SmartLocale) {
-  const t = SMART_LABELS[locale];
-  const items = [...SMART_BASE_ITEMS];
-  if (trip.startDate) items.push(...SMART_SEASON_ITEMS[seasonFor(trip.startDate)]);
-
-  const out = items.map((i) => ({ label: t[i.key], category: i.category }));
-
-  let days = 3; // sensible default before the trip has real dates yet
-  if (trip.startDate && trip.endDate) {
-    const diffDays = Math.round((trip.endDate.getTime() - trip.startDate.getTime()) / 86400000);
-    days = Math.max(1, diffDays + 1);
-  }
-  out.push({ label: `${t.underwear} (x${days})`, category: "clothing" });
-  out.push({ label: `${t.socks} (x${days})`, category: "clothing" });
-  out.push({ label: t.pajamas, category: "clothing" });
-
-  return out;
 }
 
 // Year in Travel (Fase 3, Milestone 5, Club-only) — built from Trip +
@@ -617,30 +490,45 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return Response.json({ ok: true });
     }
 
-    case "generateSmartPacking": {
+    // Smart packing (Club). The list is derived in the theme from the trip and these preferences; here we only keep the
+    // member's choices and the state of the items they touched. Everything about it is Club-only, enforced here.
+    case "setPackPrefs": {
       if (!membership.isClub) {
         return Response.json({ error: "CLUB_ONLY", feature: "smart_packing" }, { status: 403 });
       }
       const trip = await assertTripOwnership(body.tripId, shop, customerId);
-      // Regenerating only ever touches items this generator made itself
-      // (source:"smart") — never the default template or anything the
-      // customer typed in by hand.
-      await db.checklistItem.deleteMany({ where: { tripId: trip.id, source: "smart" } });
-      const items = buildSmartPackingList(trip, normalizeSmartLocale(body.locale));
-      await db.checklistItem.createMany({
-        data: items.map((item, i) => ({
-          tripId: trip.id,
-          label: item.label,
-          category: item.category,
-          source: "smart",
-          sortOrder: 1000 + i,
-        })),
-      });
-      const checklist = await db.checklistItem.findMany({
-        where: { tripId: trip.id },
-        orderBy: { sortOrder: "asc" },
-      });
-      return Response.json({ checklist });
+      const prefs = sanitizePackPrefs(body.prefs);
+      if (!prefs) return Response.json({ error: "Invalid preferences" }, { status: 400 });
+      await db.trip.update({ where: { id: trip.id }, data: { packPrefs: JSON.stringify(prefs) } });
+      // Rows left by the first Smart Packing (generated labels, no key) are replaced by the derived list.
+      await db.checklistItem.deleteMany({ where: { tripId: trip.id, source: "smart", key: null } });
+      return Response.json({ prefs });
+    }
+
+    case "setPackItem": {
+      if (!membership.isClub) {
+        return Response.json({ error: "CLUB_ONLY", feature: "smart_packing" }, { status: 403 });
+      }
+      const trip = await assertTripOwnership(body.tripId, shop, customerId);
+      const key = String(body.key ?? "");
+      if (!PACK_KEY.test(key)) return Response.json({ error: "Invalid item" }, { status: 400 });
+      const data: { done?: boolean; qty?: number | null } = {};
+      if (body.done !== undefined) data.done = Boolean(body.done);
+      if (body.qty !== undefined) {
+        if (body.qty === null) data.qty = null;
+        else {
+          const q = Math.round(Number(body.qty));
+          if (!Number.isFinite(q) || q < 1 || q > 99) return Response.json({ error: "Invalid quantity" }, { status: 400 });
+          data.qty = q;
+        }
+      }
+      const existing = await db.checklistItem.findFirst({ where: { tripId: trip.id, key } });
+      const item = existing
+        ? await db.checklistItem.update({ where: { id: existing.id }, data })
+        : await db.checklistItem.create({
+            data: { tripId: trip.id, label: key, key, source: "smart", sortOrder: 2000, done: data.done ?? false, qty: data.qty ?? null },
+          });
+      return Response.json({ item });
     }
 
     // Nationality picker (My Passport). Replaces the customer's whole list. The stored text is the
