@@ -9,7 +9,7 @@ import {
 } from "../calc-plan.server";
 import { PACK_KEY, packingRatio, parsePackPrefs, sanitizePackPrefs } from "../pack.server";
 import {
-  MAP_IMPORT_BATCH, MAP_PLACE_LIMIT, MAP_STATUSES, allowSearch, cleanPlace, geocodeNames, isDuplicate, moveMapPlace, reindexDay, roomLeft, searchPlaces, suggestPlaces,
+  MAP_IMPORT_BATCH, MAP_PLACE_LIMIT, MAP_STATUSES, ROUTE_POINTS_MAX, allowRoute, allowSearch, cleanPlace, geocodeNames, isDuplicate, moveMapPlace, reindexDay, roomLeft, routeLegs, searchPlaces, suggestPlaces,
 } from "../route-map.server";
 import { CLUB_NATIONALITY_LIMIT, FREE_NATIONALITY_LIMIT, NATIONALITY_NAMES } from "../nationalities";
 
@@ -301,6 +301,25 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       return Response.json({ hits });
     } catch {
       return Response.json({ hits: [], error: "SEARCH_UNAVAILABLE" }, { status: 502 });
+    }
+  }
+
+  if (searchParams.get("mapRoute") !== null) {
+    const membership = await resolveMembership(session.shop, customerId);
+    if (!membership.isClub) return clubOnlyMap();
+    const profile = searchParams.get("profile") === "car" ? "car" : "foot";
+    const pts = (searchParams.get("pts") || "").split(";").filter(Boolean).map((p) => {
+      const [lat, lng] = p.split(",").map(Number);
+      return { lat, lng };
+    });
+    if (pts.length < 2 || pts.length > ROUTE_POINTS_MAX || pts.some((p) => !Number.isFinite(p.lat) || !Number.isFinite(p.lng) || Math.abs(p.lat) > 90 || Math.abs(p.lng) > 180)) {
+      return Response.json({ error: "BAD_POINTS" }, { status: 400 });
+    }
+    if (!allowRoute(customerId)) return Response.json({ error: "RATE_LIMIT" }, { status: 429 });
+    try {
+      return Response.json(await routeLegs(pts, profile));
+    } catch {
+      return Response.json({ error: "ROUTE_UNAVAILABLE" }, { status: 502 });
     }
   }
 

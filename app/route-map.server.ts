@@ -190,6 +190,61 @@ export async function geocodeNames(names: string[], near: { lat?: number; lon?: 
   return out;
 }
 
+// ---- routes along the roads (OSRM over OpenStreetMap data, public FOSSGIS servers)
+// The map draws the real way between consecutive stops and shows real distances. Walking and driving only: public transport
+// needs timetables, which have no free source. Results are cached for a day (a day's stops rarely change), requests are
+// limited per member, and the engine is only reached from here, so it can be swapped for another one in this function.
+
+export type RouteResult = { geometry: [number, number][]; legs: { m: number; s: number }[] };
+export const ROUTE_POINTS_MAX = 60;
+const OSRM = {
+  foot: "https://routing.openstreetmap.de/routed-foot/route/v1/foot/",
+  car: "https://routing.openstreetmap.de/routed-car/route/v1/driving/",
+};
+const routeCache = new Map<string, { t: number; r: RouteResult }>();
+const ROUTE_TTL = 24 * 60 * 60 * 1000, ROUTE_CACHE_MAX = 400, ROUTE_PER_MINUTE = 30;
+const recentRoutes = new Map<string, number[]>();
+
+export function allowRoute(customerId: string, now = Date.now()): boolean {
+  const list = (recentRoutes.get(customerId) || []).filter((t) => now - t < 60000);
+  if (list.length >= ROUTE_PER_MINUTE) { recentRoutes.set(customerId, list); return false; }
+  list.push(now); recentRoutes.set(customerId, list);
+  if (recentRoutes.size > 2000) for (const k of recentRoutes.keys()) { if (!(recentRoutes.get(k) || []).some((t) => now - t < 60000)) recentRoutes.delete(k); }
+  return true;
+}
+
+// Reads the pieces we use from an OSRM route response; null when the engine found no way.
+export function parseOsrm(json: any): RouteResult | null {
+  const route = json && json.code === "Ok" && Array.isArray(json.routes) ? json.routes[0] : null;
+  if (!route || !route.geometry || !Array.isArray(route.geometry.coordinates) || !Array.isArray(route.legs)) return null;
+  const geometry = route.geometry.coordinates
+    .filter((c: unknown) => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1]))
+    .map((c: number[]) => [Math.round(c[0] * 1e5) / 1e5, Math.round(c[1] * 1e5) / 1e5] as [number, number]);
+  const legs = route.legs.map((l: any) => ({ m: Math.round(Number(l.distance) || 0), s: Math.round(Number(l.duration) || 0) }));
+  return geometry.length ? { geometry, legs } : null;
+}
+
+export async function routeLegs(points: { lat: number; lng: number }[], profile: "foot" | "car"): Promise<RouteResult> {
+  if (points.length < 2 || points.length > ROUTE_POINTS_MAX) throw new Error("bad points");
+  const key = profile + "|" + points.map((p) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`).join(";");
+  const hit = routeCache.get(key);
+  if (hit && Date.now() - hit.t < ROUTE_TTL) return hit.r;
+  // the engine takes up to 25 points at a time; long days go in overlapping pieces
+  const out: RouteResult = { geometry: [], legs: [] };
+  for (let i = 0; i < points.length - 1; i += 24) {
+    const chunk = points.slice(i, i + 25);
+    const coords = chunk.map((p) => `${p.lng.toFixed(5)},${p.lat.toFixed(5)}`).join(";");
+    const json = await getJson(new URL(`${OSRM[profile]}${coords}?overview=full&geometries=geojson&steps=false`), 12000);
+    const r = parseOsrm(json);
+    if (!r || r.legs.length !== chunk.length - 1) throw new Error("no route");
+    out.geometry.push(...(out.geometry.length ? r.geometry.slice(1) : r.geometry));
+    out.legs.push(...r.legs);
+  }
+  routeCache.set(key, { t: Date.now(), r: out });
+  if (routeCache.size > ROUTE_CACHE_MAX) { const first = routeCache.keys().next().value; if (first) routeCache.delete(first); }
+  return out;
+}
+
 // ---- moving things between days and the "por asignar" tray
 
 import type { PrismaClient } from "@prisma/client";
