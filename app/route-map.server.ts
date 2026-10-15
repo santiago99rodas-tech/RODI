@@ -137,11 +137,11 @@ function toHitN(r: any): Hit | null {
   return { name, sub: kind, hood, category: categoryFor(r.category || r.class, r.type), lat, lng: lon, osmId: `${r.osm_type || ""}${r.osm_id || ""}` };
 }
 
-export async function searchPlaces(query: string, opts: { lat?: number; lon?: number; lang?: string; limit?: number } = {}): Promise<Hit[]> {
+export async function searchPlaces(query: string, opts: { lat?: number; lon?: number; lang?: string; limit?: number; bounded?: boolean } = {}): Promise<Hit[]> {
   const q = text(query, 120);
   if (q.length < 2) return [];
   const near = Number.isFinite(opts.lat) && Number.isFinite(opts.lon);
-  const key = ["n", norm(q), opts.lang || "", near ? `${Math.round(opts.lat! * 10) / 10},${Math.round(opts.lon! * 10) / 10}` : "", opts.limit || 6].join("|");
+  const key = ["n", norm(q), opts.lang || "", opts.bounded && near ? "b" : "", near ? `${Math.round(opts.lat! * 10) / 10},${Math.round(opts.lon! * 10) / 10}` : "", opts.limit || 6].join("|");
   const hit = cache.get(key);
   if (hit && Date.now() - hit.t < CACHE_TTL) return hit.hits;
   // one request per second to the public instance, however many members are searching
@@ -154,7 +154,7 @@ export async function searchPlaces(query: string, opts: { lat?: number; lon?: nu
   url.searchParams.set("addressdetails", "1");
   url.searchParams.set("limit", String(opts.limit || 6));
   if (opts.lang) url.searchParams.set("accept-language", opts.lang);
-  if (near) { const d = 1.5; url.searchParams.set("viewbox", `${opts.lon! - d},${opts.lat! + d},${opts.lon! + d},${opts.lat! - d}`); }
+  if (near) { const d = 1.5; url.searchParams.set("viewbox", `${opts.lon! - d},${opts.lat! + d},${opts.lon! + d},${opts.lat! - d}`); if (opts.bounded) url.searchParams.set("bounded", "1"); }
   const json: any = await getJson(url, 8000);
   const hits = (Array.isArray(json) ? json : []).map(toHitN).filter(Boolean) as Hit[];
   remember(key, hits);
@@ -178,13 +178,15 @@ function remember(key: string, hits: Hit[]) {
   if (cache.size > CACHE_MAX) { const first = cache.keys().next().value; if (first) cache.delete(first); }
 }
 
+// A name from a Takeout list is only accepted inside the area the member is looking at (bounded search): a place with the same
+// name on the other side of the country is worse than "not found".
 // Looks up a few names one after another (searchPlaces already spaces its requests) to import a Takeout CSV, which has no coordinates.
 export async function geocodeNames(names: string[], near: { lat?: number; lon?: number; lang?: string }): Promise<{ name: string; hit: Hit | null }[]> {
   const out: { name: string; hit: Hit | null }[] = [];
   for (const raw of names.slice(0, 6)) {
     const name = text(raw, 160);
     let hit: Hit | null = null;
-    try { hit = (await searchPlaces(name, { ...near, limit: 1 }))[0] || null; } catch { hit = null; }
+    try { hit = (await searchPlaces(name, { ...near, limit: 1, bounded: true }))[0] || null; } catch { hit = null; }
     out.push({ name, hit });
   }
   return out;
