@@ -57,6 +57,7 @@ model Trip {
   participants     Participant[]
   journalEntries   JournalEntry[]
   serviceInquiries ServiceInquiry[]
+  places           TripPlace[]
 
   @@index([shop, customerId])
 }
@@ -102,6 +103,10 @@ model Activity {
   category  String?
   location  String?
   imageUrl  String?
+  // Route map (Club): where the stop is and a short note. Null for stops typed in by hand.
+  lat       Float?
+  lng       Float?
+  note      String?
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -428,4 +433,22 @@ model CalculatorPlan {
   updatedAt  DateTime @updatedAt
 
   @@index([shop, customerId])
+}
+
+// Route map (Club): places a member saved on the map that are not in a day yet ("por asignar"),
+// optionally marked "want" (Quiero ir) or "review" (Revisar lugar). Assigning one to a day turns it into an Activity.
+model TripPlace {
+  id        String   @id @default(cuid())
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  name      String
+  category  String?
+  lat       Float
+  lng       Float
+  note      String?
+  status    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tripId])
 }

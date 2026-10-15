@@ -8,6 +8,9 @@ import {
   CALC_CLUB_PLAN_LIMIT, CALC_FREE_PLAN_LIMIT, PANEL_LABELS, budgetCategory, computeTotals, sanitizePlan,
 } from "../calc-plan.server";
 import { PACK_KEY, packingRatio, parsePackPrefs, sanitizePackPrefs } from "../pack.server";
+import {
+  MAP_IMPORT_BATCH, MAP_PLACE_LIMIT, MAP_STATUSES, allowSearch, cleanPlace, geocodeNames, isDuplicate, moveMapPlace, reindexDay, roomLeft, searchPlaces, suggestPlaces,
+} from "../route-map.server";
 import { CLUB_NATIONALITY_LIMIT, FREE_NATIONALITY_LIMIT, NATIONALITY_NAMES } from "../nationalities";
 
 // Fase 3 Free-tier limits. Not configurable from Admin yet (no admin UI
@@ -33,6 +36,22 @@ async function assertTripOwnership(tripId: string, shop: string, customerId: str
   const trip = await db.trip.findFirst({ where: { id: tripId, shop, customerId } });
   if (!trip) throw new Response("Not found", { status: 404 });
   return trip;
+}
+
+// Route map (Club). A stop on the map is an Activity with coordinates; a place saved but not yet in a day is a TripPlace.
+// Both count toward the same per-trip cap.
+type MapCountTx = Pick<typeof db, "activity" | "tripPlace">;
+
+function clubOnlyMap() {
+  return Response.json({ error: "CLUB_ONLY", feature: "route_map" }, { status: 403 });
+}
+
+async function mapPlaceCount(tx: MapCountTx, tripId: string) {
+  const [a, p] = await Promise.all([
+    tx.activity.count({ where: { day: { tripId }, lat: { not: null } } }),
+    tx.tripPlace.count({ where: { tripId } }),
+  ]);
+  return a + p;
 }
 
 // Travel Readiness (Fase 3, Milestone 3) — a 0-100 score computed on the fly
@@ -267,6 +286,45 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     return Response.json({ score, buckets, recommendations });
   }
 
+  if (searchParams.get("mapSearch") !== null) {
+    const membership = await resolveMembership(session.shop, customerId);
+    if (!membership.isClub) return clubOnlyMap();
+    if (!allowSearch(customerId)) return Response.json({ error: "RATE_LIMIT" }, { status: 429 });
+    const lat = Number(searchParams.get("lat")), lon = Number(searchParams.get("lon"));
+    try {
+      const find = searchParams.get("mode") === "search" ? searchPlaces : suggestPlaces;
+      const hits = await find(searchParams.get("mapSearch") || "", {
+        lat: searchParams.get("lat") !== null && Number.isFinite(lat) ? lat : undefined,
+        lon: searchParams.get("lon") !== null && Number.isFinite(lon) ? lon : undefined,
+        lang: searchParams.get("lang") || undefined,
+      });
+      return Response.json({ hits });
+    } catch {
+      return Response.json({ hits: [], error: "SEARCH_UNAVAILABLE" }, { status: 502 });
+    }
+  }
+
+  if (tripId && searchParams.get("routemap")) {
+    const membership = await resolveMembership(session.shop, customerId);
+    if (!membership.isClub) return clubOnlyMap();
+    const trip = await db.trip.findFirst({
+      where: { id: tripId, shop: session.shop, customerId },
+      select: {
+        id: true, title: true, destination: true, startDate: true, endDate: true,
+        days: {
+          orderBy: { sortOrder: "asc" },
+          select: {
+            id: true, date: true, title: true, sortOrder: true,
+            activities: { orderBy: { sortOrder: "asc" }, select: { id: true, title: true, category: true, location: true, note: true, lat: true, lng: true, time: true, sortOrder: true } },
+          },
+        },
+        places: { orderBy: { createdAt: "asc" }, select: { id: true, name: true, category: true, lat: true, lng: true, note: true, status: true } },
+      },
+    });
+    if (!trip) return Response.json({ error: "Not found" }, { status: 404 });
+    return Response.json({ trip, limit: MAP_PLACE_LIMIT });
+  }
+
   if (tripId) {
     const trip = await db.trip.findFirst({
       where: { id: tripId, shop: session.shop, customerId },
@@ -453,6 +511,131 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       }
       await db.activity.delete({ where: { id: body.activityId } });
       return Response.json({ ok: true });
+    }
+
+    case "mapAddPlace": {
+      if (!membership.isClub) return clubOnlyMap();
+      const trip = await assertTripOwnership(body.tripId, shop, customerId);
+      const place = cleanPlace(body);
+      if (!place) return Response.json({ error: "BAD_PLACE" }, { status: 400 });
+      if ((await mapPlaceCount(db, trip.id)) >= MAP_PLACE_LIMIT) {
+        return Response.json({ error: "MAP_PLACE_LIMIT", limit: MAP_PLACE_LIMIT }, { status: 403 });
+      }
+      if (body.dayId) {
+        const day = await db.day.findFirst({ where: { id: String(body.dayId), tripId: trip.id } });
+        if (!day) return Response.json({ error: "Not found" }, { status: 404 });
+        const count = await db.activity.count({ where: { dayId: day.id } });
+        const activity = await db.activity.create({
+          data: {
+            dayId: day.id, title: place.name, category: place.category, note: place.note, lat: place.lat, lng: place.lng,
+            location: typeof body.hood === "string" ? body.hood.slice(0, 160) || null : null, sortOrder: count,
+          },
+        });
+        return Response.json({ kind: "activity", activity });
+      }
+      const created = await db.tripPlace.create({
+        data: { tripId: trip.id, name: place.name, category: place.category, lat: place.lat, lng: place.lng, note: place.note, status: place.status },
+      });
+      return Response.json({ kind: "place", place: created });
+    }
+
+    case "mapMovePlace": {
+      if (!membership.isClub) return clubOnlyMap();
+      const isActivity = body.kind === "activity";
+      const id = String(body.id ?? "");
+      let tripId: string | null = null;
+      if (isActivity) {
+        const a = await db.activity.findUnique({ where: { id }, include: { day: { include: { trip: true } } } });
+        if (a && a.day.trip.shop === shop && a.day.trip.customerId === customerId) tripId = a.day.tripId;
+      } else {
+        const pl = await db.tripPlace.findUnique({ where: { id }, include: { trip: true } });
+        if (pl && pl.trip.shop === shop && pl.trip.customerId === customerId) tripId = pl.tripId;
+      }
+      if (!tripId) return Response.json({ error: "Not found" }, { status: 404 });
+      const toDay = body.toDayId ? await db.day.findFirst({ where: { id: String(body.toDayId), tripId } }) : null;
+      if (body.toDayId && !toDay) return Response.json({ error: "Not found" }, { status: 404 });
+      const index = Number.isInteger(body.index) ? Number(body.index) : null;
+      const result = await db.$transaction((tx) =>
+        moveMapPlace(tx, { kind: isActivity ? "activity" : "place", id, tripId: tripId!, toDayId: toDay ? toDay.id : null, index }),
+      );
+      if ("error" in result) return Response.json({ error: result.error }, { status: 400 });
+      return Response.json(result);
+    }
+
+    case "mapUpdatePlace": {
+      if (!membership.isClub) return clubOnlyMap();
+      const id = String(body.id ?? "");
+      const note = typeof body.note === "string" ? body.note.replace(/\s+/g, " ").trim().slice(0, 300) || null : undefined;
+      const category = typeof body.category === "string" && ["comida", "tienda", "must", "mirador", "cultura", "bar"].includes(body.category) ? body.category : undefined;
+      if (body.kind === "activity") {
+        const a = await db.activity.findUnique({ where: { id }, include: { day: { include: { trip: true } } } });
+        if (!a || a.day.trip.shop !== shop || a.day.trip.customerId !== customerId) return Response.json({ error: "Not found" }, { status: 404 });
+        const updated = await db.activity.update({ where: { id }, data: { ...(note !== undefined ? { note } : {}), ...(category ? { category } : {}) } });
+        return Response.json({ activity: updated });
+      }
+      const pl = await db.tripPlace.findUnique({ where: { id }, include: { trip: true } });
+      if (!pl || pl.trip.shop !== shop || pl.trip.customerId !== customerId) return Response.json({ error: "Not found" }, { status: 404 });
+      const status = body.status === null ? null : (MAP_STATUSES as readonly string[]).includes(body.status) ? (body.status as string) : undefined;
+      const updated = await db.tripPlace.update({
+        where: { id },
+        data: { ...(note !== undefined ? { note } : {}), ...(category ? { category } : {}), ...(status !== undefined ? { status } : {}) },
+      });
+      return Response.json({ place: updated });
+    }
+
+    case "mapDeletePlace": {
+      if (!membership.isClub) return clubOnlyMap();
+      const id = String(body.id ?? "");
+      if (body.kind === "activity") {
+        const a = await db.activity.findUnique({ where: { id }, include: { day: { include: { trip: true } } } });
+        if (!a || a.day.trip.shop !== shop || a.day.trip.customerId !== customerId) return Response.json({ error: "Not found" }, { status: 404 });
+        await db.$transaction(async (tx) => { await tx.activity.delete({ where: { id } }); await reindexDay(tx, a.dayId); });
+        return Response.json({ ok: true });
+      }
+      const pl = await db.tripPlace.findUnique({ where: { id }, include: { trip: true } });
+      if (!pl || pl.trip.shop !== shop || pl.trip.customerId !== customerId) return Response.json({ error: "Not found" }, { status: 404 });
+      await db.tripPlace.delete({ where: { id } });
+      return Response.json({ ok: true });
+    }
+
+    case "mapImport": {
+      if (!membership.isClub) return clubOnlyMap();
+      const trip = await assertTripOwnership(body.tripId, shop, customerId);
+      const incoming = (Array.isArray(body.places) ? body.places : []).slice(0, MAP_IMPORT_BATCH).map(cleanPlace).filter((p): p is NonNullable<typeof p> => p !== null);
+      const [acts, places] = await Promise.all([
+        db.activity.findMany({ where: { day: { tripId: trip.id }, lat: { not: null } }, select: { title: true, lat: true, lng: true } }),
+        db.tripPlace.findMany({ where: { tripId: trip.id }, select: { name: true, lat: true, lng: true } }),
+      ]);
+      const pool = [
+        ...acts.map((a) => ({ name: a.title, lat: a.lat as number, lng: a.lng as number })),
+        ...places.map((p) => ({ name: p.name, lat: p.lat, lng: p.lng })),
+      ];
+      const fresh: typeof incoming = [];
+      let skipped = 0;
+      for (const p of incoming) {
+        if (isDuplicate(p, pool.concat(fresh))) skipped++;
+        else fresh.push(p);
+      }
+      const { fit, over } = roomLeft(pool.length, fresh.length);
+      const toAdd = fresh.slice(0, fit);
+      await db.$transaction(
+        toAdd.map((p) => db.tripPlace.create({ data: { tripId: trip.id, name: p.name, category: p.category, lat: p.lat, lng: p.lng, note: p.note, status: p.status } })),
+      );
+      const saved = await db.tripPlace.findMany({ where: { tripId: trip.id }, orderBy: { createdAt: "asc" }, select: { id: true, name: true, category: true, lat: true, lng: true, note: true, status: true } });
+      return Response.json({ added: toAdd.length, skipped, over, places: saved, limit: MAP_PLACE_LIMIT });
+    }
+
+    case "mapGeocode": {
+      if (!membership.isClub) return clubOnlyMap();
+      const names = (Array.isArray(body.names) ? body.names : []).filter((n: unknown): n is string => typeof n === "string").slice(0, 6);
+      const allowed = names.filter(() => allowSearch(customerId));
+      const lat = Number(body.lat), lon = Number(body.lon);
+      const found = await geocodeNames(allowed, {
+        lat: body.lat !== undefined && Number.isFinite(lat) ? lat : undefined,
+        lon: body.lon !== undefined && Number.isFinite(lon) ? lon : undefined,
+        lang: typeof body.lang === "string" ? body.lang : undefined,
+      });
+      return Response.json({ results: found, limited: names.length - allowed.length });
     }
 
     case "createChecklistItem": {
