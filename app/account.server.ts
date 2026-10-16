@@ -36,7 +36,8 @@ export function sanitizeProfile(raw: unknown): ProfileInput {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const firstName = clean(r.firstName, 60);
   const phone = sanitizePhone(r.phone);
-  if (!firstName || phone === null) throw new AccountFailure("INVALID");
+  if (phone === null) throw new AccountFailure("INVALID", "phone");
+  if (!firstName) throw new AccountFailure("INVALID", "name");
   return { firstName, lastName: clean(r.lastName, 60), phone };
 }
 
@@ -53,7 +54,8 @@ export function sanitizeAddress(raw: unknown): AddressInput {
   }
   const phone = sanitizePhone(r.phone);
   const firstName = clean(r.firstName, 60), address1 = clean(r.address1, 100), city = clean(r.city, 60);
-  if (!firstName || !address1 || !city || phone === null) throw new AccountFailure("INVALID");
+  if (phone === null) throw new AccountFailure("INVALID", "phone");
+  if (!firstName || !address1 || !city) throw new AccountFailure("INVALID");
   return {
     firstName, lastName: clean(r.lastName, 60), address1, address2: clean(r.address2, 100), city,
     provinceCode: country.p.length ? provinceCode : "", zip: clean(r.zip, 20), countryCode, phone,
