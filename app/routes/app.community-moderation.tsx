@@ -14,21 +14,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = session.shop;
 
-  const [questions, recommendations] = await Promise.all([
-    db.communityQuestion.findMany({
-      where: { shop },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-      include: { answers: { orderBy: { createdAt: "asc" } } },
-    }),
-    db.communityRecommendation.findMany({
-      where: { shop },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    }),
-  ]);
-
-  return { questions, recommendations };
+  // flagged first (members' reports hide a post after three), then the newest
+  const posts = await db.communityPost.findMany({
+    where: { shop },
+    orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+    take: 150,
+    include: { replies: { orderBy: { createdAt: "asc" } } },
+  });
+  posts.sort((x, y) => Number(y.status === "flagged") - Number(x.status === "flagged") || +new Date(y.createdAt) - +new Date(x.createdAt));
+  return { posts };
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -43,16 +37,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return { error: "Estado no válido" };
   }
 
-  if (type === "question") {
-    await db.communityQuestion.updateMany({ where: { id, shop }, data: { status } });
-  } else if (type === "answer") {
-    // Answers don't carry shop directly on the update filter (no composite
-    // unique on shop+id), but every answer's parent question is already
-    // shop-scoped, and the id itself is a cuid — scoped enough for an
-    // admin-only moderation action.
-    await db.communityAnswer.update({ where: { id }, data: { status } });
-  } else if (type === "recommendation") {
-    await db.communityRecommendation.updateMany({ where: { id, shop }, data: { status } });
+  if (type === "post") {
+    await db.communityPost.updateMany({ where: { id, shop }, data: { status } });
+  } else if (type === "reply") {
+    const reply = await db.communityReply.findFirst({ where: { id, shop } });
+    if (!reply) return { error: "No encontrado" };
+    await db.communityReply.update({ where: { id }, data: { status } });
+    // keep the visible reply counter (and the 10-reply cap) in step with what the forum shows
+    const visible = await db.communityReply.count({ where: { postId: reply.postId, status: "published" } });
+    await db.communityPost.update({ where: { id: reply.postId }, data: { replyCount: visible } });
   } else {
     return { error: "Tipo no válido" };
   }
@@ -81,7 +74,7 @@ function StatusButtons({ type, id, current, fetcher }: { type: string; id: strin
 }
 
 export default function CommunityModeration() {
-  const { questions, recommendations } = useLoaderData<typeof loader>();
+  const { posts } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<typeof action>();
   const shopify = useAppBridge();
 
@@ -91,58 +84,42 @@ export default function CommunityModeration() {
     }
   }, [fetcher.data, shopify]);
 
+  const flagged = posts.filter((p) => p.status === "flagged" || p.replies.some((r) => r.status === "flagged")).length;
+
   return (
     <s-page heading="Moderación de la comunidad">
-      <s-section heading={`Preguntas (${questions.length})`}>
-        {questions.length === 0 ? (
-          <s-paragraph>Aún no hay preguntas publicadas.</s-paragraph>
+      <s-section heading={`Publicaciones (${posts.length}) · por revisar: ${flagged}`}>
+        {posts.length === 0 ? (
+          <s-paragraph>Aún no hay publicaciones.</s-paragraph>
         ) : (
           <s-stack gap="base">
-            {questions.map((q) => (
-              <s-box key={q.id} padding="base" borderWidth="base" borderRadius="base">
+            {posts.map((p) => (
+              <s-box key={p.id} padding="base" borderWidth="base" borderRadius="base">
                 <s-stack gap="base">
-                  <s-text fontWeight="bold">{q.title}</s-text>
-                  <s-text tone="neutral">
-                    {q.authorName} · {new Date(q.createdAt).toLocaleDateString("es-CO")} · estado: {STATUS_LABEL[q.status] ?? q.status}
+                  <s-text fontWeight="bold">
+                    {p.type === "question" ? "Pregunta" : "Recomendación"}: {p.title}
                   </s-text>
-                  <s-paragraph>{q.body}</s-paragraph>
-                  <StatusButtons type="question" id={q.id} current={q.status} fetcher={fetcher} />
-                  {q.answers.length > 0 && (
+                  <s-text tone="neutral">
+                    {p.authorName} · {new Date(p.createdAt).toLocaleDateString("es-CO")} · {p.country ?? "sin país"}
+                    {p.city ? ` / ${p.city}` : ""} · tema: {p.topic} · 👍 {p.likeCount} · reportes: {p.reportCount} · estado: {STATUS_LABEL[p.status] ?? p.status}
+                  </s-text>
+                  <s-paragraph>{p.body}</s-paragraph>
+                  <StatusButtons type="post" id={p.id} current={p.status} fetcher={fetcher} />
+                  {p.replies.length > 0 && (
                     <s-stack gap="base">
-                      {q.answers.map((a) => (
+                      {p.replies.map((a) => (
                         <s-box key={a.id} padding="base" background="subdued" borderRadius="base">
                           <s-stack gap="base">
                             <s-text tone="neutral">
-                              {a.authorName} respondió · estado: {STATUS_LABEL[a.status] ?? a.status}
+                              {a.authorName} respondió · 👍 {a.likeCount} · reportes: {a.reportCount} · estado: {STATUS_LABEL[a.status] ?? a.status}
                             </s-text>
                             <s-paragraph>{a.body}</s-paragraph>
-                            <StatusButtons type="answer" id={a.id} current={a.status} fetcher={fetcher} />
+                            <StatusButtons type="reply" id={a.id} current={a.status} fetcher={fetcher} />
                           </s-stack>
                         </s-box>
                       ))}
                     </s-stack>
                   )}
-                </s-stack>
-              </s-box>
-            ))}
-          </s-stack>
-        )}
-      </s-section>
-
-      <s-section heading={`Recomendaciones (${recommendations.length})`}>
-        {recommendations.length === 0 ? (
-          <s-paragraph>Aún no hay recomendaciones publicadas.</s-paragraph>
-        ) : (
-          <s-stack gap="base">
-            {recommendations.map((r) => (
-              <s-box key={r.id} padding="base" borderWidth="base" borderRadius="base">
-                <s-stack gap="base">
-                  <s-text fontWeight="bold">{r.title}</s-text>
-                  <s-text tone="neutral">
-                    {r.authorName} · {new Date(r.createdAt).toLocaleDateString("es-CO")} · estado: {STATUS_LABEL[r.status] ?? r.status}
-                  </s-text>
-                  <s-paragraph>{r.body}</s-paragraph>
-                  <StatusButtons type="recommendation" id={r.id} current={r.status} fetcher={fetcher} />
                 </s-stack>
               </s-box>
             ))}

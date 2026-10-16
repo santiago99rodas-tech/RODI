@@ -315,6 +315,69 @@ model CommunityRecommendation {
   @@index([shop, status])
 }
 
+// Community forum (Club): one stream of questions and recommendations, each with up to 10 replies.
+// Supersedes CommunityQuestion / CommunityAnswer / CommunityRecommendation (their rows were copied in by the
+// 20261020120000_add_community_forum migration; the old tables stay for the old theme pages until they are retired).
+model CommunityPost {
+  id              String   @id @default(cuid())
+  shop            String
+  customerId      String
+  authorName      String
+  type            String   // question | recommendation
+  title           String
+  body            String
+  country         String?  // country metaobject handle
+  city            String?
+  topic           String   @default("general")
+  tags            String?  // JSON array of lowercase hashtags (no #)
+  rating          Int?     // 1-5, recommendations only
+  status          String   @default("published") // published | flagged | removed
+  likeCount       Int      @default(0)
+  replyCount      Int      @default(0)
+  reportCount     Int      @default(0)
+  acceptedReplyId String?  // the reply the asker marked as helpful
+  lastActivityAt  DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  replies CommunityReply[]
+
+  @@index([shop, status, createdAt])
+  @@index([shop, status, country])
+  @@index([shop, status, topic])
+  @@index([customerId])
+}
+
+model CommunityReply {
+  id          String        @id @default(cuid())
+  shop        String
+  customerId  String
+  authorName  String
+  postId      String
+  post        CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  body        String
+  status      String        @default("published")
+  likeCount   Int           @default(0)
+  reportCount Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([postId])
+  @@index([customerId])
+}
+
+model CommunityLike {
+  id         String   @id @default(cuid())
+  shop       String
+  customerId String
+  targetType String   // post | reply
+  targetId   String
+  createdAt  DateTime @default(now())
+
+  @@unique([customerId, targetType, targetId])
+  @@index([targetType, targetId])
+}
+
 // Fase 4, RODI Services. Open to any signed-in customer (no Club gate —
 // these are paid add-ons, not a membership perk), but there's no live
 // payment gateway yet (Fase 2 is paused), so this is a waitlist/inquiry

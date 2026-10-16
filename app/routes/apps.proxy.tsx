@@ -1,4 +1,8 @@
 import { cleanEmail, cleanPhone, cleanSplitWith } from "../split.server";
+import {
+  CommunityFailure, acceptReply as acceptCommunityReply, createPost as createCommunityPost, createReply as createCommunityReply, feed as communityFeed,
+  meta as communityMeta, removeOwn as removeOwnCommunity, report as reportCommunity, thread as communityThread, toggleLike as toggleCommunityLike,
+} from "../community.server";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
@@ -150,6 +154,25 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   // branch below, these don't require logged_in_customer_id. Only
   // status:"published" rows are ever returned here; flagged/removed stay
   // invisible to this public branch regardless of who's asking.
+  if (searchParams.get("community") === "feed" || searchParams.get("community") === "meta" || searchParams.get("community") === "thread") {
+    try {
+      const viewer = getCustomerId(request);
+      const what = searchParams.get("community");
+      if (what === "meta") return Response.json(await communityMeta(session.shop));
+      if (what === "thread") {
+        const t = await communityThread(session.shop, viewer, String(searchParams.get("id") ?? ""));
+        return t ? Response.json(t) : Response.json({ error: "NOT_FOUND" }, { status: 404 });
+      }
+      return Response.json(await communityFeed(session.shop, viewer, {
+        type: searchParams.get("type") ?? undefined, country: searchParams.get("country") ?? undefined, topic: searchParams.get("topic") ?? undefined,
+        tag: searchParams.get("tag") ?? undefined, q: searchParams.get("q") ?? undefined, sort: searchParams.get("sort") ?? undefined,
+        page: Number(searchParams.get("page") ?? 1), mine: searchParams.get("mine") === "1",
+      }));
+    } catch (err) {
+      console.error("community read failed", err);
+      return Response.json({ error: "COMMUNITY_UNAVAILABLE" }, { status: 502 });
+    }
+  }
   if (searchParams.get("community") === "questions") {
     const questions = await db.communityQuestion.findMany({
       where: { shop: session.shop, status: "published" },
@@ -1341,6 +1364,35 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         },
       });
       return Response.json({ recommendation });
+    }
+
+    case "communityPostCreate":
+    case "communityReplyCreate":
+    case "communityLike":
+    case "communityAccept":
+    case "communityReport":
+    case "communityRemove": {
+      if (!membership.isClub) {
+        return Response.json({ error: "CLUB_ONLY", feature: "community" }, { status: 403 });
+      }
+      try {
+        if (op === "communityPostCreate") {
+          const post = await createCommunityPost(shop, customerId, body.authorName, body);
+          return Response.json({ post: { id: post.id } });
+        }
+        if (op === "communityReplyCreate") {
+          const reply = await createCommunityReply(shop, customerId, body.authorName, String(body.postId ?? ""), body.body);
+          return Response.json({ reply: { id: reply.id } });
+        }
+        if (op === "communityLike") return Response.json(await toggleCommunityLike(shop, customerId, String(body.targetType), String(body.targetId)));
+        if (op === "communityAccept") return Response.json(await acceptCommunityReply(shop, customerId, String(body.postId), String(body.replyId)));
+        if (op === "communityReport") return Response.json(await reportCommunity(shop, customerId, String(body.targetType), String(body.targetId)));
+        return Response.json(await removeOwnCommunity(shop, customerId, String(body.targetType), String(body.targetId)));
+      } catch (err) {
+        if (err instanceof CommunityFailure) return Response.json({ error: err.code }, { status: err.status });
+        console.error(`${op} failed`, err);
+        return Response.json({ error: "COMMUNITY_UNAVAILABLE" }, { status: 502 });
+      }
     }
 
     case "createServiceInquiry": {
