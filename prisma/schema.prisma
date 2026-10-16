@@ -73,6 +73,9 @@ model Participant {
   // (1 = a full adult share, 0.6 = a child paying 60%). Set when the
   // calculator pushes its travelers into Split; manual participants keep 1.
   weight    Float    @default(1)
+  // Optional contact so Split can open a pre-filled e-mail / WhatsApp message for this person.
+  email     String?
+  phone     String?
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
 
@@ -160,6 +163,9 @@ model Expense {
   // plan again replaces its own rows instead of duplicating them (no
   // relation: deleting a plan must not delete expenses the member kept).
   planId      String?
+  // JSON array of participant ids this expense is split between; null = everyone. A payment between two
+  // people is recorded as an expense paid by the payer and split with only the receiver.
+  splitWith   String?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 

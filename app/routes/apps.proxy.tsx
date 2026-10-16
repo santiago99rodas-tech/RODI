@@ -1,3 +1,4 @@
+import { cleanEmail, cleanPhone, cleanSplitWith } from "../split.server";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
@@ -880,6 +881,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           );
         }
       }
+      const tripPeople = (await db.participant.findMany({ where: { tripId: body.tripId }, select: { id: true } })).map((p) => p.id);
       const expense = await db.expense.create({
         data: {
           tripId: body.tripId,
@@ -889,6 +891,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           amount,
           date: body.date ? new Date(body.date) : null,
           paidById: body.paidById ?? null,
+          splitWith: cleanSplitWith(body.splitWith, tripPeople),
         },
       });
       return Response.json({ expense });
@@ -899,9 +902,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       if (!expense || expense.trip.shop !== shop || expense.trip.customerId !== customerId) {
         return Response.json({ error: "Not found" }, { status: 404 });
       }
+      const tripPeopleU = body.splitWith !== undefined ? (await db.participant.findMany({ where: { tripId: expense.tripId }, select: { id: true } })).map((p) => p.id) : [];
       const updated = await db.expense.update({
         where: { id: body.expenseId },
         data: {
+          ...(body.splitWith !== undefined ? { splitWith: cleanSplitWith(body.splitWith, tripPeopleU) } : {}),
           ...(body.category !== undefined ? { category: body.category } : {}),
           ...(body.label !== undefined ? { label: body.label } : {}),
           ...(body.amount !== undefined ? { amount: Number(body.amount) } : {}),
@@ -937,9 +942,32 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           name,
           sortOrder: count,
           weight: Number.isFinite(Number(body.weight)) ? Math.max(0.05, Math.min(1, Number(body.weight))) : 1,
+          email: cleanEmail(body.email),
+          phone: cleanPhone(body.phone),
         },
       });
       return Response.json({ participant });
+    }
+
+    case "updateParticipant": {
+      if (!membership.isClub) {
+        return Response.json({ error: "CLUB_ONLY", feature: "split" }, { status: 403 });
+      }
+      const person = await db.participant.findUnique({ where: { id: body.participantId }, include: { trip: true } });
+      if (!person || person.trip.shop !== shop || person.trip.customerId !== customerId) {
+        return Response.json({ error: "Not found" }, { status: 404 });
+      }
+      const newName = body.name !== undefined ? String(body.name).trim().slice(0, 60) : undefined;
+      if (newName !== undefined && !newName) return Response.json({ error: "Name is required" }, { status: 400 });
+      const updatedPerson = await db.participant.update({
+        where: { id: body.participantId },
+        data: {
+          ...(newName !== undefined ? { name: newName } : {}),
+          ...(body.email !== undefined ? { email: cleanEmail(body.email) } : {}),
+          ...(body.phone !== undefined ? { phone: cleanPhone(body.phone) } : {}),
+        },
+      });
+      return Response.json({ participant: updatedPerson });
     }
 
     case "deleteParticipant": {
