@@ -154,6 +154,9 @@ export async function getLegalState(shop: string, customerId: string | null): Pr
     guardian,
     guardianEmailMasked: ageBand === "minor" && consent ? maskEmail(consent.guardianEmail) : null,
   };
+  // LEGAL_GATE=off lets the app be deployed (community filter, privacy webhooks...) before the v2 legal documents are
+  // published: nobody is asked to accept and nothing is restricted. Remove the variable the day the documents go live.
+  if (process.env.LEGAL_GATE === "off") return { ...state, needsAcceptance: false, restricted: false };
   return { ...state, restricted: isRestricted(state) };
 }
 
