@@ -4,6 +4,7 @@ import db from "../db.server";
 import { resolveMembership } from "../membership.server";
 import { saveNationalities } from "../nationality.server";
 import { SavedCountriesFailure, setCountrySaved, topFavorites } from "../saved-countries.server";
+import { TravelLogFailure, setTravelEntry } from "../travel-log.server";
 import {
   CALC_CLUB_PLAN_LIMIT, CALC_FREE_PLAN_LIMIT, PANEL_LABELS, budgetCategory, computeTotals, sanitizePlan,
 } from "../calc-plan.server";
@@ -778,6 +779,28 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         }
         console.error("setCountrySaved failed", err);
         return Response.json({ error: "Could not save destination" }, { status: 500 });
+      }
+    }
+
+    // Mark a country in the passport (visited / want to go / planned), or remove it with status null. Open to every
+    // signed-in member; the theme can't write customer data itself.
+    case "setTravelEntry": {
+      if (!admin) return Response.json({ error: "Could not save country" }, { status: 500 });
+      try {
+        const log = await setTravelEntry(admin, customerId, {
+          country: body.country,
+          status: body.status === null ? null : body.status,
+          date_visited: body.date_visited,
+          note: body.note,
+        });
+        return Response.json({ log });
+      } catch (err) {
+        if (err instanceof TravelLogFailure && (err.code === "INVALID_COUNTRY" || err.code === "INVALID_STATUS")) {
+          return Response.json({ error: err.code }, { status: 400 });
+        }
+        if (err instanceof TravelLogFailure && err.code === "LIMIT") return Response.json({ error: "TRAVEL_LOG_LIMIT" }, { status: 400 });
+        console.error("setTravelEntry failed", err);
+        return Response.json({ error: "Could not save country" }, { status: 500 });
       }
     }
 
