@@ -21,7 +21,7 @@ import { popularCountries, syncTravelStats } from "../country-popularity.server"
 import { sanitizeWizard } from "../trip-wizard.server";
 import { PACK_KEY, packingRatio, parsePackPrefs, sanitizePackPrefs } from "../pack.server";
 import {
-  MAP_IMPORT_BATCH, MAP_PLACE_LIMIT, MAP_STATUSES, ROUTE_POINTS_MAX, allowRoute, allowSearch, cleanPlace, geocodeNames, isDuplicate, moveMapPlace, reindexDay, roomLeft, routeLegs, searchPlaces, suggestPlaces,
+  MAP_IMPORT_BATCH, MAP_PLACE_LIMIT, MAP_STATUSES, ROUTE_POINTS_MAX, allowRoute, allowSearch, cleanPlace, geocodeNames, isDuplicate, moveMapPlace, reindexDay, reversePlace, roomLeft, routeLegs, searchPlaces, suggestPlaces,
 } from "../route-map.server";
 import { CLUB_NATIONALITY_LIMIT, FREE_NATIONALITY_LIMIT, NATIONALITY_NAMES } from "../nationalities";
 
@@ -354,6 +354,18 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       return Response.json({ hits });
     } catch {
       return Response.json({ hits: [], error: "SEARCH_UNAVAILABLE" }, { status: 502 });
+    }
+  }
+
+  if (searchParams.get("mapReverse") !== null) {
+    const membership = await resolveMembership(session.shop, customerId);
+    if (!membership.isClub) return clubOnlyMap();
+    if (!allowSearch(customerId)) return Response.json({ error: "RATE_LIMIT" }, { status: 429 });
+    try {
+      const hit = await reversePlace(Number(searchParams.get("lat")), Number(searchParams.get("lon")), searchParams.get("lang") || undefined);
+      return Response.json({ hit });
+    } catch {
+      return Response.json({ hit: null, error: "SEARCH_UNAVAILABLE" }, { status: 502 });
     }
   }
 

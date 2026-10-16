@@ -161,6 +161,46 @@ export async function searchPlaces(query: string, opts: { lat?: number; lon?: nu
   return hits;
 }
 
+// ---- reverse (Nominatim): a tap on the map -> the address (and the place's own name when OpenStreetMap has one there)
+
+const NOMINATIM_REVERSE = "https://nominatim.openstreetmap.org/reverse";
+export type ReverseHit = { name: string; address: string; hood: string; sub: string; category: string; lat: number; lng: number };
+
+export async function reversePlace(lat: number, lon: number, lang?: string): Promise<ReverseHit | null> {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+  const key = ["r", lat.toFixed(5), lon.toFixed(5), lang || ""].join("|");
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.t < CACHE_TTL) return (cached.hits[0] as unknown as ReverseHit) || null;
+  const wait = nominatimNext - Date.now();
+  nominatimNext = Math.max(Date.now(), nominatimNext) + 1100;
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  const url = new URL(NOMINATIM_REVERSE);
+  url.searchParams.set("lat", String(lat));
+  url.searchParams.set("lon", String(lon));
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("addressdetails", "1");
+  url.searchParams.set("zoom", "18");
+  if (lang) url.searchParams.set("accept-language", lang);
+  const r: any = await getJson(url, 8000);
+  let out: ReverseHit | null = null;
+  if (r && !r.error) {
+    const a = r.address || {};
+    const street = [a.road || a.pedestrian || a.footway || a.path, a.house_number].filter(Boolean).join(" ");
+    const area = a.suburb || a.city_district || a.neighbourhood || a.quarter;
+    const town = a.city || a.town || a.village || a.municipality || a.county;
+    const parts = [street, area, town].filter(Boolean).filter((x: string, i: number, arr: string[]) => arr.indexOf(x) === i);
+    const address = parts.length ? parts.join(", ") : String(r.display_name || "").split(",").slice(0, 3).join(",").trim();
+    const hood = [area, town].filter(Boolean).filter((x: string, i: number, arr: string[]) => arr.indexOf(x) === i).join(", ");
+    // `name` is only filled when the point sits on a mapped place (shop, museum...); a plain house or street has none
+    // (a street, a neighbourhood or a boundary also has a "name", but that is already part of the address)
+    const name = ["highway", "place", "boundary", "waterway", "natural", "landuse"].includes(String(r.category || r.class)) ? "" : text(r.name, 160);
+    out = { name, address: text(address, 200), hood, sub: [r.type && String(r.type).replace(/_/g, " "), a.country].filter(Boolean).join(" · "), category: categoryFor(r.category || r.class, r.type), lat, lng: lon };
+  }
+  cache.set(key, { t: Date.now(), hits: out ? [out as unknown as Hit] : [] });
+  if (cache.size > CACHE_MAX) { const first = cache.keys().next().value; if (first) cache.delete(first); }
+  return out;
+}
+
 async function getJson(url: URL, timeoutMs: number): Promise<unknown> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
