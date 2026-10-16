@@ -1,6 +1,7 @@
 // Community forum (Club): questions and recommendations in one stream, up to 10 replies per post, likes, ranks.
 // Pure helpers are exported on their own so they can be tested without a database.
 import db from "./db.server";
+import { moderate } from "./moderation.server";
 
 export const TOPICS = [
   "general", "equipaje", "cultura", "tradiciones", "leyes", "planes", "guias", "tours", "comida", "transporte",
@@ -15,7 +16,7 @@ const REPLIES_PER_DAY = 40;
 const REPORTS_TO_HIDE = 3;
 
 export class CommunityFailure extends Error {
-  constructor(public code: string, public status = 400) {
+  constructor(public code: string, public status = 400, public category?: string) {
     super(code);
   }
 }
@@ -208,6 +209,9 @@ export async function createPost(shop: string, customerId: string, authorName: s
   if (!type) throw new CommunityFailure("BAD_TYPE");
   if (title.length < 6) throw new CommunityFailure("TITLE_SHORT");
   if (body.length < 10) throw new CommunityFailure("BODY_SHORT");
+  // nothing that breaks the Community Guidelines gets published (word lists + optional AI review)
+  const verdict = await moderate([title, body, input.city, Array.isArray(input.tags) ? input.tags.join(" ") : input.tags, authorName]);
+  if (!verdict.ok) throw new CommunityFailure("CONTENT_BLOCKED", 422, verdict.category);
   if ((await dailyCount("communityPost", shop, customerId)) >= POSTS_PER_DAY) throw new CommunityFailure("RATE_LIMIT", 429);
   const dup = await db.communityPost.findFirst({ where: { shop, customerId, title, createdAt: { gte: new Date(Date.now() - 3600000) } } });
   if (dup) throw new CommunityFailure("DUPLICATE", 409);
@@ -224,6 +228,8 @@ export async function createPost(shop: string, customerId: string, authorName: s
 export async function createReply(shop: string, customerId: string, authorName: string, postId: string, bodyIn: unknown) {
   const body = cleanText(bodyIn, 1000);
   if (body.length < 2) throw new CommunityFailure("BODY_SHORT");
+  const verdict = await moderate([body, authorName]);
+  if (!verdict.ok) throw new CommunityFailure("CONTENT_BLOCKED", 422, verdict.category);
   const post = await db.communityPost.findFirst({ where: { id: postId, shop, status: "published" } });
   if (!post) throw new CommunityFailure("NOT_FOUND", 404);
   if (post.replyCount >= MAX_REPLIES) throw new CommunityFailure("REPLY_LIMIT", 409);

@@ -1,3 +1,4 @@
+import { checkWords, moderate } from "../moderation.server";
 import { cleanEmail, cleanPhone, cleanSplitWith } from "../split.server";
 import {
   CommunityFailure, acceptReply as acceptCommunityReply, createPost as createCommunityPost, createReply as createCommunityReply, feed as communityFeed,
@@ -1431,6 +1432,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         return Response.json({ error: "Title and body are required" }, { status: 400 });
       }
       const authorName = String(body.authorName ?? "").trim().slice(0, 80) || "RODI member";
+      { const verdict = await moderate([title, bodyText, body.city, authorName]); if (!verdict.ok) return Response.json({ error: "CONTENT_BLOCKED", category: verdict.category }, { status: 422 }); }
       const question = await db.communityQuestion.create({
         data: { shop, customerId, authorName, title, body: bodyText },
       });
@@ -1446,6 +1448,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       const question = await db.communityQuestion.findFirst({ where: { id: body.questionId, shop } });
       if (!question) return Response.json({ error: "Not found" }, { status: 404 });
       const authorName = String(body.authorName ?? "").trim().slice(0, 80) || "RODI member";
+      { const verdict = await moderate([bodyText, authorName]); if (!verdict.ok) return Response.json({ error: "CONTENT_BLOCKED", category: verdict.category }, { status: 422 }); }
       const answer = await db.communityAnswer.create({
         data: { shop, customerId, questionId: body.questionId, authorName, body: bodyText },
       });
@@ -1462,6 +1465,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         return Response.json({ error: "Title and body are required" }, { status: 400 });
       }
       const authorName = String(body.authorName ?? "").trim().slice(0, 80) || "RODI member";
+      { const verdict = await moderate([title, bodyText, body.city, authorName]); if (!verdict.ok) return Response.json({ error: "CONTENT_BLOCKED", category: verdict.category }, { status: 422 }); }
       const recommendation = await db.communityRecommendation.create({
         data: {
           shop,
@@ -1474,6 +1478,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         },
       });
       return Response.json({ recommendation });
+    }
+
+    // Live check while a member types (word lists only, no AI call per keystroke); publishing runs the full check.
+    case "communityCheck": {
+      const verdict = checkWords(body.title, body.body, body.city, body.tags);
+      return Response.json(verdict.ok ? { ok: true } : { ok: false, category: verdict.category });
     }
 
     case "communityPostCreate":
@@ -1499,7 +1509,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         if (op === "communityReport") return Response.json(await reportCommunity(shop, customerId, String(body.targetType), String(body.targetId)));
         return Response.json(await removeOwnCommunity(shop, customerId, String(body.targetType), String(body.targetId)));
       } catch (err) {
-        if (err instanceof CommunityFailure) return Response.json({ error: err.code }, { status: err.status });
+        if (err instanceof CommunityFailure) return Response.json({ error: err.code, category: err.category }, { status: err.status });
         console.error(`${op} failed`, err);
         return Response.json({ error: "COMMUNITY_UNAVAILABLE" }, { status: 502 });
       }
