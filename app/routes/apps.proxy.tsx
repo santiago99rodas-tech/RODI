@@ -8,6 +8,10 @@ import { TravelLogFailure, setTravelEntry } from "../travel-log.server";
 import {
   CALC_CLUB_PLAN_LIMIT, CALC_FREE_PLAN_LIMIT, PANEL_LABELS, budgetCategory, computeTotals, sanitizePlan,
 } from "../calc-plan.server";
+import {
+  AccountFailure, deleteAddress, provinceList, readAccount, sanitizeAddress, sanitizeAddressId, sanitizeProfile, saveAddress, setDefaultAddress,
+  setEmailMarketing, updateProfile,
+} from "../account.server";
 import { sanitizeWizard } from "../trip-wizard.server";
 import { PACK_KEY, packingRatio, parsePackPrefs, sanitizePackPrefs } from "../pack.server";
 import {
@@ -132,7 +136,7 @@ function buildYearInTravel(trips: YearTripInput[], journalEntries: YearJournalIn
 }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.public.appProxy(request);
+  const { session, admin } = await authenticate.public.appProxy(request);
   if (!session) {
     return Response.json({ error: "Invalid proxy request" }, { status: 401 });
   }
@@ -172,6 +176,18 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const customerId = getCustomerId(request);
   if (!customerId) {
     return Response.json({ error: "Sign in required" }, { status: 401 });
+  }
+
+  // "Mi cuenta": the signed-in customer's own details, read from Shopify, plus the province lists the address form needs.
+  if (searchParams.get("account") !== null) {
+    if (!admin) return Response.json({ error: "ACCOUNT_UNAVAILABLE" }, { status: 503 });
+    try {
+      const account = await readAccount(admin, customerId);
+      return Response.json({ account, provinces: searchParams.get("provinces") !== null ? provinceList() : undefined });
+    } catch (err) {
+      console.error("readAccount failed", err);
+      return Response.json({ error: "ACCOUNT_UNAVAILABLE" }, { status: 502 });
+    }
   }
 
   const tripId = searchParams.get("tripId");
@@ -803,6 +819,29 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         if (err instanceof TravelLogFailure && err.code === "LIMIT") return Response.json({ error: "TRAVEL_LOG_LIMIT" }, { status: 400 });
         console.error("setTravelEntry failed", err);
         return Response.json({ error: "Could not save country" }, { status: 500 });
+      }
+    }
+
+    // "Mi cuenta": the member edits their own Shopify customer record. Every op answers with the fresh account.
+    case "updateAccount":
+    case "saveAddress":
+    case "deleteAddress":
+    case "setDefaultAddress":
+    case "setEmailMarketing": {
+      if (!admin) return Response.json({ error: "ACCOUNT_UNAVAILABLE" }, { status: 503 });
+      try {
+        if (op === "updateAccount") await updateProfile(admin, customerId, sanitizeProfile(body));
+        else if (op === "saveAddress") {
+          await saveAddress(admin, customerId, sanitizeAddress(body.address), body.addressId ? sanitizeAddressId(body.addressId) : undefined, body.makeDefault === true);
+        } else if (op === "deleteAddress") await deleteAddress(admin, customerId, sanitizeAddressId(body.addressId));
+        else if (op === "setDefaultAddress") await setDefaultAddress(admin, customerId, sanitizeAddressId(body.addressId));
+        else await setEmailMarketing(admin, customerId, body.subscribed === true);
+        return Response.json({ account: await readAccount(admin, customerId) });
+      } catch (err) {
+        if (err instanceof AccountFailure && err.code === "INVALID") return Response.json({ error: "INVALID", field: err.detail ?? null }, { status: 400 });
+        if (err instanceof AccountFailure && err.code === "LIMIT") return Response.json({ error: "ADDRESS_LIMIT" }, { status: 400 });
+        console.error(`${op} failed`, err);
+        return Response.json({ error: err instanceof AccountFailure && err.detail ? "SHOPIFY_REJECTED" : "ACCOUNT_UNAVAILABLE", detail: err instanceof AccountFailure ? err.detail ?? null : null }, { status: 502 });
       }
     }
 
