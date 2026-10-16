@@ -65,7 +65,7 @@
 
 
 <div style="padding-top:16px;font-family:Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:11px;line-height:1.9;color:#6B6A66;">
-&copy; {{ 'now' | date: '%Y' }} RODI Club. Tutti i diritti riservati.<br>
+&copy; {{ 'now' | date: '%Y' }} RODI Club. Tutti i diritti riservati.{% if legal.name != blank %}<br>Gestito da {{ legal.name | escape }}{% if legal.tax_id != blank %} &middot; NIT {{ legal.tax_id | escape }}{% endif %}{% if legal.address != blank %} &middot; {{ legal.address | escape }}{% endif %}{% endif %}<br>
 <a href="{{ shop.url }}/pages/privacy" style="color:#6B6A66;">Informativa sulla privacy</a> &nbsp;|&nbsp; <a href="{{ shop.url }}/pages/terms" style="color:#6B6A66;">Termini</a> &nbsp;|&nbsp; <a href="{{ shop.url }}/pages/contact" style="color:#6B6A66;">Assistenza</a>
 
 </div>

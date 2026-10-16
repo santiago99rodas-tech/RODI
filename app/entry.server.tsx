@@ -7,6 +7,7 @@ import { isbot } from "isbot";
 import { addDocumentResponseHeaders } from "./shopify.server";
 import { startAbandonedCartScheduler } from "./abandoned-carts.server";
 import { startBackupScheduler } from "./backup.server";
+import { startGuardianSweepScheduler } from "./privacy.server";
 
 export const streamTimeout = 5000;
 
@@ -15,6 +16,9 @@ startAbandonedCartScheduler();
 
 // Database snapshots (kept in the persistent volume); BACKUP_ENABLED=false turns it off.
 startBackupScheduler();
+
+// Hourly: members aged 15-17 whose guardian has not answered within 30 days have their Club data deleted (privacy.server.ts).
+startGuardianSweepScheduler();
 
 export default async function handleRequest(
   request: Request,

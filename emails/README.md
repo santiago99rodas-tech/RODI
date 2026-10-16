@@ -81,6 +81,6 @@ This store uses Shopify's new abandoned-checkout automation, which takes no cust
 `abandoned-checkout` email is sent by the app instead (`app/abandoned-carts.server.ts`, Admin > Abandoned carts).
 A job runs every 10 minutes while `ABANDONED_CART_ENABLED=true`: it asks Shopify for abandoned checkouts and emails the ones
 left at least `ABANDONED_CART_DELAY_MINUTES` (60) ago and at most `ABANDONED_CART_MAX_AGE_HOURS` (48) ago, once per cart, only
-to customers subscribed to marketing emails (`ABANDONED_CART_AUDIENCE=all` to include everyone), skipping customers who
+to customers subscribed to marketing emails only (consent is required; the old `ABANDONED_CART_AUDIENCE=all` switch is ignored), skipping customers who
 ordered since or got a cart email in the last 7 days. Guest checkouts without a customer record cannot be emailed.
 Needs the `read_orders` scope. Turn off Shopify's own automation (Marketing > Automations) before enabling the job.

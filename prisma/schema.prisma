@@ -536,3 +536,65 @@ model TripPlace {
 
   @@index([tripId])
 }
+
+// Legal acceptance log (Terms, Privacy, marketing). Append-only: one row per document per acceptance attempt, so the
+// record shows what each member agreed to, when, and from where. Only the birth YEAR and MONTH are kept (never the day);
+// the age band is recomputed from them on every read (ageBand here is the snapshot at the time of the row). A refused
+// attempt (under 15) is stored with accepted=false so the gate can keep showing the block.
+model LegalAcceptance {
+  id         String   @id @default(cuid())
+  shop       String
+  customerId String
+  document   String   // terms | privacy | marketing
+  version    String
+  accepted   Boolean
+  ageBand    String?  // adult | minor | under_15
+  birthYear  Int?
+  birthMonth Int?     // 1-12
+  ip         String?
+  userAgent  String?
+  source     String   // club-gate
+  createdAt  DateTime @default(now())
+
+  @@index([shop, customerId, document, version])
+  @@index([shop, customerId, createdAt])
+}
+
+// Parent/guardian authorization for a member aged 15-17. The emailed link carries a random token; only its HMAC is
+// stored (tokenHash), so the database alone cannot produce a working link.
+model GuardianConsent {
+  id                String    @id @default(cuid())
+  shop              String
+  customerId        String
+  tokenHash         String    @unique
+  status            String    @default("pending") // pending | approved | declined | superseded
+  guardianEmail     String
+  locale            String    @default("es")
+  expiresAt         DateTime
+  lastSentAt        DateTime?
+  approvedAt        DateTime?
+  approvedIp        String?
+  approvedUserAgent String?
+  declinedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([shop, customerId, createdAt])
+}
+
+// Privacy requests (access/export and erasure) from members and from Shopify's mandatory compliance webhooks.
+// Kept as the audit trail after the data itself is gone, so it holds ids and outcomes only.
+model DataRequest {
+  id               String   @id @default(cuid())
+  shop             String
+  customerId       String?
+  type             String   // export | erase
+  source           String   // member | shopify_webhook | guardian_timeout
+  status           String   // done | shopify_pending | emailed | failed
+  detail           String?
+  shopifyRequestId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([shop, createdAt])
+}

@@ -559,7 +559,61 @@ COPY["dispatch"] = {
   it: { subject: "{{ dispatch.title }}", preheader: "Il dispaccio RODI: luoghi, capi e viaggi.", eyebrow: "RODI Dispatch", read: "Leggi di più", cta: "Scopri RODI", quote: "Fatto per andare lontano." },
 };
 
+// Parent/guardian authorization for a member aged 15-17 (sent by the app, see app/legal.server.ts). {{ member_name }} is
+// the member's first name and may be blank; {{ consent_url }} is the signed link to the authorization page.
+COPY["guardian-consent"] = {
+  es: {
+    subject: "Autorización para la cuenta de un menor en RODI Club",
+    preheader: "Necesitamos tu autorización antes de activar su cuenta.",
+    h1: "Tu autorización",
+    named: "{{ member_name | escape }} creó una cuenta en RODI Club e indicó que eres su madre, padre o tutor legal.",
+    anon: "Una persona menor de edad creó una cuenta en RODI Club e indicó que eres su madre, padre o tutor legal.",
+    p: "Como tiene entre 15 y 17 años, su cuenta queda en pausa hasta que la autorices. En la página verás qué datos tratamos, las restricciones que aplicamos a los menores y podrás aceptar o rechazar.",
+    cta: "Revisar y responder",
+    expires: "El enlace vence en 30 días. Si no esperabas este correo, puedes ignorarlo: la cuenta seguirá en pausa.",
+  },
+  en: {
+    subject: "Authorization for a minor's RODI Club account",
+    preheader: "We need your authorization before their account is activated.",
+    h1: "Your authorization",
+    named: "{{ member_name | escape }} created a RODI Club account and named you as their parent or legal guardian.",
+    anon: "A minor created a RODI Club account and named you as their parent or legal guardian.",
+    p: "Because they are between 15 and 17, their account stays paused until you authorize it. The page explains what data we process and the restrictions we apply to minors, and lets you accept or decline.",
+    cta: "Review and respond",
+    expires: "The link expires in 30 days. If you were not expecting this email you can ignore it: the account will stay paused.",
+  },
+  fr: {
+    subject: "Autorisation pour le compte d'un mineur sur RODI Club",
+    preheader: "Nous avons besoin de votre autorisation avant d'activer son compte.",
+    h1: "Votre autorisation",
+    named: "{{ member_name | escape }} a créé un compte RODI Club et vous a indiqué comme parent ou tuteur légal.",
+    anon: "Une personne mineure a créé un compte RODI Club et vous a indiqué comme parent ou tuteur légal.",
+    p: "Comme elle a entre 15 et 17 ans, son compte reste en pause jusqu'à votre autorisation. La page explique quelles données nous traitons et les restrictions appliquées aux mineurs, et vous permet d'accepter ou de refuser.",
+    cta: "Consulter et répondre",
+    expires: "Le lien expire dans 30 jours. Si vous n'attendiez pas cet e-mail, vous pouvez l'ignorer : le compte restera en pause.",
+  },
+  it: {
+    subject: "Autorizzazione per l'account di un minore su RODI Club",
+    preheader: "Ci serve la tua autorizzazione prima di attivare il suo account.",
+    h1: "La tua autorizzazione",
+    named: "{{ member_name | escape }} ha creato un account RODI Club e ti ha indicato come genitore o tutore legale.",
+    anon: "Una persona minorenne ha creato un account RODI Club e ti ha indicato come genitore o tutore legale.",
+    p: "Poiché ha tra 15 e 17 anni, il suo account resta in pausa finché non lo autorizzi. La pagina spiega quali dati trattiamo e le restrizioni per i minori, e ti permette di accettare o rifiutare.",
+    cta: "Leggi e rispondi",
+    expires: "Il link scade tra 30 giorni. Se non aspettavi questa email puoi ignorarla: l'account resterà in pausa.",
+  },
+};
+
+// Sender identification line in every footer ("Operado por <legal name> · NIT <tax id> · <address>"). The values come
+// from LEGAL_NAME / LEGAL_TAX_ID / LEGAL_ADDRESS (see lib/components.js); only the labels live here.
+const LEGAL_FOOTER = {
+  es: { operatedBy: "Operado por", taxId: "NIT" },
+  en: { operatedBy: "Operated by", taxId: "NIT" },
+  fr: { operatedBy: "Exploité par", taxId: "NIT" },
+  it: { operatedBy: "Gestito da", taxId: "NIT" },
+};
+
 const all = (id, key) => Object.fromEntries(LANGS.map((l) => [l, COPY[id][l][key]]));
 const tagline = (lang) => TAGLINE[lang];
 
-module.exports = { LANGS, copy, all, tagline };
+module.exports = { LANGS, copy, all, tagline, LEGAL_FOOTER };

@@ -53,16 +53,16 @@ export default function AbandonedCarts() {
         <s-stack gap="base">
           <s-text fontWeight="bold">{settings.enabled ? "Los recordatorios automáticos están ACTIVADOS" : "Los recordatorios automáticos están DESACTIVADOS"}</s-text>
           <s-text>Tiempo de espera: {settings.delayMinutes} minutos después de dejar el carrito (hasta {settings.maxAgeHours} horas)</s-text>
-          <s-text>A quién: {settings.audience === "all" ? "todo cliente con correo" : "clientes suscritos a correos de marketing"}</s-text>
+          <s-text>A quién: solo clientes suscritos a correos de marketing ({settings.audience}); enviar sin consentimiento no está permitido.</s-text>
           <s-text tone="neutral">
             Lo que recibió la app: ABANDONED_CART_ENABLED = {settings.received.enabled}
             {settings.received.enabled === '"true"' ? " (correcto)" : " (debe ser exactamente true, en minúsculas, sin comillas ni espacios)"}; ABANDONED_CART_AUDIENCE ={" "}
-            {settings.received.audience} (solo el valor all cambia algo; cualquier otro significa solo clientes suscritos).
+            {settings.received.audience} (se ignora: siempre solo clientes suscritos, por consentimiento).
           </s-text>
           <s-text>Resend: {resendReady ? "listo" : "sin configurar"}</s-text>
           <s-paragraph>
-            Para activarlo, define ABANDONED_CART_ENABLED=true en EasyPanel y vuelve a desplegar. Opcionales: ABANDONED_CART_DELAY_MINUTES (por defecto 60),
-            ABANDONED_CART_MAX_AGE_HOURS (por defecto 48) y ABANDONED_CART_AUDIENCE=all (por defecto: solo clientes suscritos).
+            Para activarlo, define ABANDONED_CART_ENABLED=true en EasyPanel y vuelve a desplegar. Opcionales: ABANDONED_CART_DELAY_MINUTES (por defecto 60)
+            y ABANDONED_CART_MAX_AGE_HOURS (por defecto 48). Solo se escribe a clientes suscritos a marketing; ya no existe la opción de escribir a todos.
             Apaga antes la automatización de checkout abandonado de Shopify (Marketing &gt; Automatizaciones) para que nadie reciba dos correos.
           </s-paragraph>
         </s-stack>

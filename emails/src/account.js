@@ -88,4 +88,28 @@ const verificationCode = {
   },
 };
 
-module.exports = [welcomeClub, accountReady, verificationCode];
+// Sent to the parent/guardian a member aged 15-17 named when accepting the Terms (app/legal.server.ts). Not marketing.
+const guardianConsent = {
+  id: "guardian-consent",
+  title: { es: "Autorización de madre, padre o tutor", en: "Parent or guardian authorization" },
+  channel: { type: "app", trigger: "legalAccept by a member aged 15-17 (and guardianResend, at most once every 10 minutes)" },
+  marketing: false,
+  subject: all("guardian-consent", "subject"),
+  preheader: all("guardian-consent", "preheader"),
+  variables: ["consent_url", "member_name (optional)", "shop.url"],
+  sample: { consent_url: "https://example.com/legal/guardian?token=sample", member_name: "Sofía" },
+  build(lang) {
+    const S = copy("guardian-consent", lang);
+    return [
+      K.header({ tagline: tagline(lang), rule: true }),
+      K.headline(S.h1, { padTop: 30, size: 42 }),
+      K.para(`{% if member_name != blank %}${S.named}{% else %}${S.anon}{% endif %}`, { max: 460 }),
+      K.para(S.p, { max: 460, padTop: 14 }),
+      K.button({ label: S.cta, url: "{{ consent_url }}", dark: true, padTop: 30 }),
+      K.para(S.expires, { size: 13, color: c.muted, padTop: 24, max: 440 }),
+      K.footer({ lang, quote: "", nav: false, marketing: false }),
+    ].join("\n");
+  },
+};
+
+module.exports = [welcomeClub, accountReady, verificationCode, guardianConsent];

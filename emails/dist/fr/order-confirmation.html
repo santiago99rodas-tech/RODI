@@ -79,7 +79,7 @@
 <div style="padding-top:0px;"><a href="{{ shop.url }}"><img src="https://rodiclub.com/cdn/shop/t/4/assets/rodi-email-logo.png?v=3" width="84" alt="RODI" style="width:84px;height:auto;margin:0 auto;"></a></div>
 
 <div style="padding-top:16px;font-family:Montserrat, 'Helvetica Neue', Helvetica, Arial, sans-serif;font-size:11px;line-height:1.9;color:#6B6A66;">
-&copy; {{ 'now' | date: '%Y' }} RODI Club. Tous droits réservés.<br>
+&copy; {{ 'now' | date: '%Y' }} RODI Club. Tous droits réservés.{% if legal.name != blank %}<br>Exploité par {{ legal.name | escape }}{% if legal.tax_id != blank %} &middot; NIT {{ legal.tax_id | escape }}{% endif %}{% if legal.address != blank %} &middot; {{ legal.address | escape }}{% endif %}{% endif %}<br>
 <a href="{{ shop.url }}/pages/privacy" style="color:#6B6A66;">Politique de confidentialité</a> &nbsp;|&nbsp; <a href="{{ shop.url }}/pages/terms" style="color:#6B6A66;">Conditions</a> &nbsp;|&nbsp; <a href="{{ shop.url }}/pages/contact" style="color:#6B6A66;">Assistance</a>
 
 </div>

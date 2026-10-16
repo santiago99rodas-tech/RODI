@@ -8,7 +8,7 @@ import type { CampaignTemplateId } from "./campaign-spec";
 
 export const EMAIL_LOCALES = ["es", "en", "fr", "it"] as const;
 export type EmailLocale = (typeof EMAIL_LOCALES)[number];
-export type AppEmailTemplate = "account-ready" | "welcome-club" | "abandoned-checkout";
+export type AppEmailTemplate = "account-ready" | "welcome-club" | "abandoned-checkout" | "guardian-consent";
 export type EmailTemplateId = AppEmailTemplate | CampaignTemplateId;
 
 const engine = new Liquid({ strictVariables: false });
@@ -77,7 +77,9 @@ export async function renderEmail(
   subjectData: Record<string, unknown> = data,
 ): Promise<{ subject: string; html: string }> {
   const shop = { url: storefrontUrl(), name: "RODI Club" };
-  const context = { shop, locale, ...data };
+  // Sender identification printed in every footer (emails/lib/components.js senderLine); unset values are left out.
+  const legal = { name: process.env.LEGAL_NAME?.trim() || "", tax_id: process.env.LEGAL_TAX_ID?.trim() || "", address: process.env.LEGAL_ADDRESS?.trim() || "" };
+  const context = { shop, locale, legal, ...data };
   const [subject, html] = await Promise.all([
     engine.parseAndRender(readSubject(locale, template), { shop, ...subjectData }),
     engine.parseAndRender(readTemplate(locale, template), context),

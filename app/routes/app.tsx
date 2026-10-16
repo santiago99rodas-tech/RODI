@@ -28,6 +28,7 @@ export default function App() {
         <s-link href="/app/abandoned-carts">Carritos abandonados</s-link>
         <s-link href="/app/backups">Respaldos</s-link>
         <s-link href="/app/calculator-usage">Uso calculadora</s-link>
+        <s-link href="/app/data-requests">Datos personales</s-link>
       </s-app-nav>
       <Outlet />
     </AppProvider>

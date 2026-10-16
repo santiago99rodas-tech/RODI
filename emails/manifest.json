@@ -337,5 +337,28 @@
       "expires_in_minutes",
       "shop.url"
     ]
+  },
+  {
+    "id": "guardian-consent",
+    "title": {
+      "es": "Autorización de madre, padre o tutor",
+      "en": "Parent or guardian authorization"
+    },
+    "channel": {
+      "type": "app",
+      "trigger": "legalAccept by a member aged 15-17 (and guardianResend, at most once every 10 minutes)"
+    },
+    "marketing": false,
+    "subject": {
+      "es": "Autorización para la cuenta de un menor en RODI Club",
+      "en": "Authorization for a minor's RODI Club account",
+      "fr": "Autorisation pour le compte d'un mineur sur RODI Club",
+      "it": "Autorizzazione per l'account di un minore su RODI Club"
+    },
+    "variables": [
+      "consent_url",
+      "member_name (optional)",
+      "shop.url"
+    ]
   }
 ]

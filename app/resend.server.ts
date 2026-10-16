@@ -23,6 +23,8 @@ export async function sendEmail(input: {
   html: string;
   idempotencyKey?: string;
   headers?: Record<string, string>;
+  // Files sent with the message (content is base64). Used for the data-request export sent to the store owner.
+  attachments?: { filename: string; content: string }[];
 }): Promise<SendResult> {
   const key = process.env.RESEND_API_KEY;
   const { from, replyTo } = resendConfig();
@@ -37,7 +39,7 @@ export async function sendEmail(input: {
         "Content-Type": "application/json",
         ...(input.idempotencyKey ? { "Idempotency-Key": input.idempotencyKey } : {}),
       },
-      body: JSON.stringify({ from, to: [input.to], reply_to: replyTo, subject: input.subject, html: input.html, headers: input.headers }),
+      body: JSON.stringify({ from, to: [input.to], reply_to: replyTo, subject: input.subject, html: input.html, headers: input.headers, attachments: input.attachments }),
     });
     const body = (await response.json().catch(() => ({}))) as { id?: string; message?: string; name?: string };
     if (!response.ok || !body.id) {

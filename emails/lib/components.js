@@ -2,6 +2,7 @@
 // Every function returns an HTML string that may contain Liquid ({{ }} / {% %}); build.js leaves it untouched for
 // Shopify and renders it with liquidjs for previews and for the app's own sender.
 const T = require("./theme");
+const { LEGAL_FOOTER } = require("../src/copy");
 const { color: c, font: f } = T;
 
 const img = (name) => `${T.ASSET_BASE}${name}?v=${T.ASSET_VERSION}`;
@@ -212,6 +213,23 @@ function divider(padTop = 40, inset = 40) {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding:${padTop}px ${inset}px 0;"><div style="height:1px;background:${c.gold};opacity:.55;font-size:0;line-height:0;">&nbsp;</div></td></tr></table>`;
 }
 
+// Who sends the email (legal name, tax id, address), required in every message. When LEGAL_NAME / LEGAL_TAX_ID /
+// LEGAL_ADDRESS are set while building, the values are written into dist (so the copies pasted into Shopify carry them);
+// otherwise the line is left as Liquid that the app fills from the same variables when it sends (app/email-render.server.ts).
+// A missing value just drops its part of the line; nothing is ever printed as a placeholder.
+const escapeHtml = (v) => String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function senderLine(lang) {
+  const L = LEGAL_FOOTER[lang];
+  const env = { name: process.env.LEGAL_NAME, taxId: process.env.LEGAL_TAX_ID, address: process.env.LEGAL_ADDRESS };
+  if (env.name) {
+    const parts = [`${L.operatedBy} ${escapeHtml(env.name.trim())}`];
+    if (env.taxId) parts.push(`${L.taxId} ${escapeHtml(env.taxId.trim())}`);
+    if (env.address) parts.push(escapeHtml(env.address.trim()));
+    return `<br>${parts.join(" &middot; ")}`;
+  }
+  return `{% if legal.name != blank %}<br>${L.operatedBy} {{ legal.name | escape }}{% if legal.tax_id != blank %} &middot; ${L.taxId} {{ legal.tax_id | escape }}{% endif %}{% if legal.address != blank %} &middot; {{ legal.address | escape }}{% endif %}{% endif %}`;
+}
+
 function footer({ lang, quote, nav = true, marketing = false, wordmark = true, minimal = false, why }) {
   const t = FOOT[lang];
   const links = [T.link.destinations, T.link.experiences, T.link.inspiration, T.link.club];
@@ -221,7 +239,7 @@ function footer({ lang, quote, nav = true, marketing = false, wordmark = true, m
         .join("")}</div>`
     : "";
   const legal = `<div style="padding-top:16px;font-family:${f.body};font-size:11px;line-height:1.9;color:${c.muted};">
-&copy; {{ 'now' | date: '%Y' }} RODI Club. ${t.rights}<br>
+&copy; {{ 'now' | date: '%Y' }} RODI Club. ${t.rights}${senderLine(lang)}<br>
 <a href="${T.link.privacy}" style="color:${c.muted};">${t.privacy}</a> &nbsp;|&nbsp; <a href="${T.link.terms}" style="color:${c.muted};">${t.terms}</a> &nbsp;|&nbsp; <a href="${T.link.contact}" style="color:${c.muted};">${t.support}</a>${marketing ? ` &nbsp;|&nbsp; <a href="{{ unsubscribe_url }}" style="color:${c.muted};">${t.unsub}</a>` : ""}
 ${marketing ? `<br><span style="font-size:10.5px;">${why || t.why}</span>` : ""}
 </div>`;

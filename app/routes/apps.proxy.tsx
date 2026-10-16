@@ -24,6 +24,27 @@ import {
   MAP_IMPORT_BATCH, MAP_PLACE_LIMIT, MAP_STATUSES, ROUTE_POINTS_MAX, allowRoute, allowSearch, cleanPlace, geocodeNames, isDuplicate, moveMapPlace, reindexDay, reversePlace, roomLeft, routeLegs, searchPlaces, suggestPlaces,
 } from "../route-map.server";
 import { CLUB_NATIONALITY_LIMIT, FREE_NATIONALITY_LIMIT, NATIONALITY_NAMES } from "../nationalities";
+import { acceptLegal, clientIp, clientUserAgent, getLegalState, resendGuardian } from "../legal.server";
+import { buildCustomerExport, deleteAccountAsMember, exportFilename } from "../privacy.server";
+
+// Legal gate (see app/legal.server.ts). While a member is restricted (documents not accepted for the current versions,
+// under 15, or a 15-17 member without an approved guardian) every write is refused except these, which they need to get
+// out of that state or to exercise their privacy rights.
+const LEGAL_EXEMPT_OPS = new Set(["legalAccept", "guardianResend", "accountExport", "accountDelete", "updateAccount"]);
+// Minors (even with guardian approval) can read the community but not publish in it.
+const MINOR_READ_ONLY_OPS = new Set([
+  "communityPostCreate", "communityReplyCreate", "createCommunityQuestion", "createCommunityAnswer", "createCommunityRecommendation",
+]);
+
+function exportResponse(data: unknown) {
+  return new Response(JSON.stringify(data, null, 2), {
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Content-Disposition": `attachment; filename="${exportFilename()}"`,
+      "Cache-Control": "no-store",
+    },
+  });
+}
 
 // Fase 3 Free-tier limits. Not configurable from Admin yet (no admin UI
 // exists in this app) — change these constants and redeploy if they need
@@ -208,9 +229,19 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     return Response.json({ favorites: await topFavorites(session.shop) });
   }
 
+  // Legal gate state. Answers for signed-out visitors too (loggedIn:false), so the theme can call it unconditionally.
+  if (searchParams.get("legal") !== null) {
+    return Response.json(await getLegalState(session.shop, getCustomerId(request)), { headers: { "Cache-Control": "no-store" } });
+  }
+
   const customerId = getCustomerId(request);
   if (!customerId) {
     return Response.json({ error: "Sign in required" }, { status: 401 });
+  }
+
+  // "Descargar mis datos": everything the app stores about the member, as a file (plain link with the download attribute).
+  if (searchParams.get("export") === "all") {
+    return exportResponse(await buildCustomerExport(session.shop, customerId, { admin }));
   }
 
   // "Mi cuenta": the signed-in customer's own details, read from Shopify, plus the province lists the address form needs.
@@ -450,7 +481,46 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   const { op } = body;
 
+  const legal = await getLegalState(shop, customerId);
+  // Opting OUT of marketing is always allowed (withdrawing consent can never be blocked); opting in is not while restricted.
+  const isUnsubscribe = op === "setEmailMarketing" && body.subscribed !== true;
+  if (legal.restricted && !LEGAL_EXEMPT_OPS.has(op) && !isUnsubscribe) {
+    return Response.json({ error: "legal_restricted" }, { status: 403 });
+  }
+  const isMinor = legal.ageBand === "minor" || legal.ageBand === "under_15";
+  if (isMinor && MINOR_READ_ONLY_OPS.has(op)) return Response.json({ error: "minor_read_only" }, { status: 403 });
+  if (isMinor && op === "setEmailMarketing" && body.subscribed === true) return Response.json({ error: "minor_marketing" }, { status: 403 });
+
   switch (op) {
+    case "legalAccept": {
+      const result = await acceptLegal(
+        { shop, customerId, admin: admin ?? null, ip: clientIp(request), userAgent: clientUserAgent(request) },
+        body,
+      );
+      if ("error" in result) return Response.json({ error: result.error }, { status: result.error === "under_15" ? 403 : 400 });
+      return Response.json({ ok: true, ...(await getLegalState(shop, customerId)) });
+    }
+
+    case "guardianResend": {
+      const result = await resendGuardian({ shop, customerId, admin: admin ?? null });
+      if ("error" in result) return Response.json({ error: result.error, retryAfter: result.retryAfter }, { status: result.status });
+      return Response.json({ ok: true });
+    }
+
+    case "accountExport":
+      return exportResponse(await buildCustomerExport(shop, customerId, { admin }));
+
+    case "accountDelete": {
+      if (body.confirm !== "ELIMINAR") return Response.json({ error: "confirm_required" }, { status: 400 });
+      try {
+        await deleteAccountAsMember(shop, customerId, admin ?? null, session.scope);
+      } catch (err) {
+        console.error("accountDelete failed", err);
+        return Response.json({ error: "DELETE_FAILED" }, { status: 500 });
+      }
+      return Response.json({ ok: true });
+    }
+
     case "createTrip": {
       if (!membership.isClub) {
         const existingCount = await db.trip.count({ where: { shop, customerId } });

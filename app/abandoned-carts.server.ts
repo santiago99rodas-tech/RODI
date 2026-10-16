@@ -12,13 +12,16 @@ import { unsubscribeUrl } from "./unsubscribe.server";
 // abandoned checkouts and emails the ones that qualify. A cart qualifies when:
 //   - it was left at least ABANDONED_CART_DELAY_MINUTES ago (default 60) and no more than ABANDONED_CART_MAX_AGE_HOURS (default 48)
 //   - it is not completed, has products, and belongs to a customer with an email
-//   - the customer accepted marketing emails (ABANDONED_CART_AUDIENCE=all relaxes this to every customer)
+//   - the customer accepted marketing emails (always; ABANDONED_CART_AUDIENCE is ignored, see audience() below)
 //   - the customer has not ordered since, and was not sent a cart reminder in the last 7 days
 // Each cart is emailed at most once (AbandonedCartLog), and every email carries a working unsubscribe link.
 
 const delayMinutes = () => Number(process.env.ABANDONED_CART_DELAY_MINUTES) || 60;
 const maxAgeHours = () => Number(process.env.ABANDONED_CART_MAX_AGE_HOURS) || 48;
-const audience = () => (process.env.ABANDONED_CART_AUDIENCE === "all" ? "all" : "subscribed");
+// Always subscribers only. A cart reminder is a commercial message, and sending it without the customer's prior marketing
+// consent is not allowed (Ley 1581 de 2012 / Habeas Data in Colombia, GDPR art. 6 + ePrivacy for EU visitors). The old
+// ABANDONED_CART_AUDIENCE=all switch is deliberately ignored; it is only echoed on the admin page so a stale value is visible.
+const audience = (): "subscribed" => "subscribed";
 export const abandonedCartsEnabled = () => process.env.ABANDONED_CART_ENABLED === "true";
 // `received` shows exactly what the running app sees in the two switches (not secrets), so a typo in EasyPanel is visible
 // from the admin page instead of guessed at.
@@ -116,7 +119,7 @@ export async function runAbandonedCarts(
     if (idle > maxAgeHours() * 60 * 60 * 1000) { skip("demasiado antiguo"); continue; }
     if (!customer || !email) { skip("sin correo del cliente"); continue; }
     if (cart.lineItems.nodes.length === 0) { skip("carrito vacío"); continue; }
-    if (audience() === "subscribed" && customer.emailMarketingConsent?.marketingState !== "SUBSCRIBED") { skip("no está suscrito a correos de marketing"); continue; }
+    if (customer.emailMarketingConsent?.marketingState !== "SUBSCRIBED") { skip("no está suscrito a correos de marketing"); continue; }
 
     const customerId = customer.id.replace("gid://shopify/Customer/", "");
     const logged = await db.abandonedCartLog.findUnique({ where: { shop_checkoutId: { shop, checkoutId: cart.id } } });
