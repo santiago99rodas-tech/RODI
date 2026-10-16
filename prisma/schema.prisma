@@ -45,6 +45,8 @@ model Trip {
   coverImageUrl String?
   // Smart packing preferences (JSON, see app/pack.server.ts). Null until a Club member sets them.
   packPrefs     String?
+  // Answers of the "Plan a trip" assistant: who travels, what they like (JSON, see app/trip-wizard.server.ts).
+  wizard        String?
   budgetTotal    Float?
   budgetCurrency String   @default("USD")
   createdAt     DateTime  @default(now())

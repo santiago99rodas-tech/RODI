@@ -8,6 +8,7 @@ import { TravelLogFailure, setTravelEntry } from "../travel-log.server";
 import {
   CALC_CLUB_PLAN_LIMIT, CALC_FREE_PLAN_LIMIT, PANEL_LABELS, budgetCategory, computeTotals, sanitizePlan,
 } from "../calc-plan.server";
+import { sanitizeWizard } from "../trip-wizard.server";
 import { PACK_KEY, packingRatio, parsePackPrefs, sanitizePackPrefs } from "../pack.server";
 import {
   MAP_IMPORT_BATCH, MAP_PLACE_LIMIT, MAP_STATUSES, ROUTE_POINTS_MAX, allowRoute, allowSearch, cleanPlace, geocodeNames, isDuplicate, moveMapPlace, reindexDay, roomLeft, routeLegs, searchPlaces, suggestPlaces,
@@ -402,6 +403,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           destination: body.destination ?? null,
           startDate: body.startDate ? new Date(body.startDate) : null,
           endDate: body.endDate ? new Date(body.endDate) : null,
+          wizard: (() => { const w = sanitizeWizard(body.wizard); return w ? JSON.stringify(w) : null; })(),
         },
       });
       return Response.json({ trip });
