@@ -12,7 +12,7 @@ import { getLegalState } from "./legal.server";
 
 export const OWNER_EMAIL = "contact@rodiclub.com";
 // Customer metafields this app writes (and therefore exports and clears).
-export const MANAGED_METAFIELDS = ["club_access_until", "nationalities", "saved_countries", "travel_log", "age_band", "legal_version"] as const;
+export const MANAGED_METAFIELDS = ["club_access_until", "nationalities", "saved_countries", "travel_log", "age_band", "legal_version", "residence_country", "residence_city"] as const;
 const ERASURE_SCOPE = "write_customer_data_erasure";
 
 /** Admin API client for a shop from its stored offline session, or null (e.g. shop/redact after uninstall). */

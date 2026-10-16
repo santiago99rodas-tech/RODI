@@ -8,6 +8,7 @@ import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { resolveMembership } from "../membership.server";
 import { saveNationalities } from "../nationality.server";
+import { readProfileGate, sanitizeResidence, saveResidence } from "../profile-gate.server";
 import { SavedCountriesFailure, setCountrySaved, topFavorites } from "../saved-countries.server";
 import { TravelLogFailure, setTravelEntry } from "../travel-log.server";
 import {
@@ -23,7 +24,7 @@ import { PACK_KEY, packingRatio, parsePackPrefs, sanitizePackPrefs } from "../pa
 import {
   MAP_IMPORT_BATCH, MAP_PLACE_LIMIT, MAP_STATUSES, ROUTE_POINTS_MAX, allowRoute, allowSearch, cleanPlace, geocodeNames, isDuplicate, moveMapPlace, reindexDay, reversePlace, roomLeft, routeLegs, searchPlaces, suggestPlaces,
 } from "../route-map.server";
-import { CLUB_NATIONALITY_LIMIT, FREE_NATIONALITY_LIMIT, NATIONALITY_NAMES } from "../nationalities";
+import { CLUB_NATIONALITY_LIMIT, FREE_NATIONALITY_LIMIT, NATIONALITIES, NATIONALITY_NAMES } from "../nationalities";
 import { acceptLegal, clientIp, clientUserAgent, getLegalState, resendGuardian } from "../legal.server";
 import { buildCustomerExport, deleteAccountAsMember, exportFilename } from "../privacy.server";
 
@@ -242,6 +243,19 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   // "Descargar mis datos": everything the app stores about the member, as a file (plain link with the download attribute).
   if (searchParams.get("export") === "all") {
     return exportResponse(await buildCustomerExport(session.shop, customerId, { admin }));
+  }
+
+  // Profile step of the Club gate: what is still missing (name, mobile, nationality, where they live) and the country list for the pickers.
+  if (searchParams.get("profileGate") !== null) {
+    if (!admin) return Response.json({ error: "ACCOUNT_UNAVAILABLE" }, { status: 503 });
+    try {
+      const membership = await resolveMembership(session.shop, customerId);
+      const state = await readProfileGate(admin, customerId);
+      return Response.json({ ...state, countries: NATIONALITIES, nationalityLimit: membership.isClub ? CLUB_NATIONALITY_LIMIT : FREE_NATIONALITY_LIMIT }, { headers: { "Cache-Control": "no-store" } });
+    } catch (err) {
+      console.error("readProfileGate failed", err);
+      return Response.json({ error: "ACCOUNT_UNAVAILABLE" }, { status: 502 });
+    }
   }
 
   // "Mi cuenta": the signed-in customer's own details, read from Shopify, plus the province lists the address form needs.
@@ -938,6 +952,20 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         if (err instanceof TravelLogFailure && err.code === "LIMIT") return Response.json({ error: "TRAVEL_LOG_LIMIT" }, { status: 400 });
         console.error("setTravelEntry failed", err);
         return Response.json({ error: "Could not save country" }, { status: 500 });
+      }
+    }
+
+    // Where the member lives (profile step of the Club gate): country (ISO code) and city, kept in two customer metafields.
+    case "setResidence": {
+      if (!admin) return Response.json({ error: "ACCOUNT_UNAVAILABLE" }, { status: 503 });
+      const residence = sanitizeResidence(body);
+      if (!residence) return Response.json({ error: "INVALID", field: "residence" }, { status: 400 });
+      try {
+        await saveResidence(admin, customerId, residence);
+        return Response.json({ residence });
+      } catch (err) {
+        console.error("setResidence failed", err);
+        return Response.json({ error: "ACCOUNT_UNAVAILABLE" }, { status: 502 });
       }
     }
 
