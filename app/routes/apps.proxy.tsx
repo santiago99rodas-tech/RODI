@@ -12,6 +12,7 @@ import {
   AccountFailure, deleteAddress, provinceList, readAccount, sanitizeAddress, sanitizeAddressId, sanitizeProfile, saveAddress, setDefaultAddress,
   setEmailMarketing, updateProfile,
 } from "../account.server";
+import { popularCountries, syncTravelStats } from "../country-popularity.server";
 import { sanitizeWizard } from "../trip-wizard.server";
 import { PACK_KEY, packingRatio, parsePackPrefs, sanitizePackPrefs } from "../pack.server";
 import {
@@ -166,6 +167,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       take: 50,
     });
     return Response.json({ recommendations });
+  }
+
+  // Where members are going (saves + passport), public counts only. Used by the Home when enough members have taken part.
+  if (searchParams.get("popular") !== null) {
+    try {
+      return Response.json(await popularCountries(session.shop));
+    } catch (err) {
+      console.error("popularCountries failed", err);
+      return Response.json({ members: 0, countries: [] });
+    }
   }
 
   // Member favorites ranking is public too: only per-country save counts, never who saved what.
@@ -811,6 +822,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           date_visited: body.date_visited,
           note: body.note,
         });
+        // keep the public ranking in step with the passport; never let it fail the save
+        try { await syncTravelStats(shop, customerId, log); } catch (err) { console.error("syncTravelStats failed", err); }
         return Response.json({ log });
       } catch (err) {
         if (err instanceof TravelLogFailure && (err.code === "INVALID_COUNTRY" || err.code === "INVALID_STATUS")) {

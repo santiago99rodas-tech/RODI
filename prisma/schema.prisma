@@ -419,6 +419,19 @@ model CountrySave {
   @@index([shop, countryHandle])
 }
 
+// A country in a member's passport (any status). Mirrors custom.travel_log for the popularity ranking only.
+model CountryTravel {
+  id            String   @id @default(cuid())
+  shop          String
+  customerId    String
+  countryHandle String
+  status        String
+  updatedAt     DateTime @updatedAt
+
+  @@unique([shop, customerId, countryHandle])
+  @@index([shop, countryHandle])
+}
+
 // A saved Trip Cost Calculator plan. `data` is the sanitized plan JSON
 // (see calc-plan.server.ts); `total` and `currency` are recomputed by the
 // server on every save and only used for the plan list.
