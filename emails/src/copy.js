@@ -548,6 +548,51 @@ const COPY = {
   },
 };
 
+// Double opt-in confirmation (Shopify notification "Customer marketing confirmation"). {{ customer.subscribe_url }} is
+// Shopify's own confirmation link; the person is only subscribed after clicking it.
+COPY["marketing-confirmation"] = {
+  es: {
+    subject: "Confirma tu suscripción a RODI",
+    preheader: "Un clic y listo: te avisaremos de lanzamientos y novedades.",
+    eyebrow: "Un último paso",
+    h1: "Confirma tu<br>suscripción",
+    p: "Pediste recibir correos de RODI: el aviso cuando abra la venta de una pieza, nuevos Chapters y novedades del Club. Confirma con un clic para que podamos escribirte.",
+    cta: "Confirmar suscripción",
+    ignore: "Si no fuiste tú, ignora este correo: no te suscribiremos y no volverás a recibirlo.",
+    unsub: "Puedes darte de baja en cualquier correo que te enviemos.",
+  },
+  en: {
+    subject: "Confirm your RODI subscription",
+    preheader: "One click and you're in: we'll tell you about launches and news.",
+    eyebrow: "One last step",
+    h1: "Confirm your<br>subscription",
+    p: "You asked to receive emails from RODI: a note when a piece goes on sale, new Chapters and Club news. Confirm with one click so we can write to you.",
+    cta: "Confirm subscription",
+    ignore: "If this wasn't you, ignore this email: we won't subscribe you and you won't get it again.",
+    unsub: "You can unsubscribe from any email we send.",
+  },
+  fr: {
+    subject: "Confirmez votre abonnement à RODI",
+    preheader: "Un clic et c'est fait : lancements et nouveautés.",
+    eyebrow: "Une dernière étape",
+    h1: "Confirmez votre<br>abonnement",
+    p: "Vous avez demandé à recevoir les e-mails de RODI : l'annonce de la mise en vente d'une pièce, les nouveaux Chapters et les nouvelles du Club. Confirmez d'un clic pour que nous puissions vous écrire.",
+    cta: "Confirmer l'abonnement",
+    ignore: "Si ce n'était pas vous, ignorez cet e-mail : nous ne vous abonnerons pas et vous ne le recevrez plus.",
+    unsub: "Vous pouvez vous désabonner depuis chaque e-mail.",
+  },
+  it: {
+    subject: "Conferma la tua iscrizione a RODI",
+    preheader: "Un clic ed è fatta: lanci e novità.",
+    eyebrow: "Un ultimo passo",
+    h1: "Conferma la tua<br>iscrizione",
+    p: "Hai chiesto di ricevere le e-mail di RODI: l'avviso quando un capo è in vendita, i nuovi Chapters e le novità del Club. Conferma con un clic così potremo scriverti.",
+    cta: "Conferma iscrizione",
+    ignore: "Se non sei stato tu, ignora questa e-mail: non ti iscriveremo e non la riceverai più.",
+    unsub: "Puoi annullare l'iscrizione da qualsiasi e-mail.",
+  },
+};
+
 // copy("id", "es") -> strings; all("id", "subject") -> { es, en, fr, it }
 const copy = (id, lang) => COPY[id][lang];
 // C8 (DEC-050) — RODI Dispatch: periodic newsletter. Title, intro and up to three stories are written per issue

@@ -112,4 +112,32 @@ const guardianConsent = {
   },
 };
 
-module.exports = [welcomeClub, accountReady, verificationCode, guardianConsent];
+// Shopify's double opt-in email: Admin > Settings > Notifications > Customer marketing confirmation.
+const marketingConfirmation = {
+  id: "marketing-confirmation",
+  title: { es: "Confirma tu suscripción", en: "Confirm your subscription" },
+  channel: { type: "shopify", trigger: "Shopify notification 'Customer marketing confirmation' (double opt-in for new email subscribers, e.g. the Notify me form)" },
+  marketing: false,
+  subject: all("marketing-confirmation", "subject"),
+  preheader: all("marketing-confirmation", "preheader"),
+  variables: ["customer.subscribe_url", "shop.url"],
+  sample: { customer: { subscribe_url: "https://rodiclub.com/" } },
+  build(lang) {
+    const S = copy("marketing-confirmation", lang);
+    const lead = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="px" align="left" style="padding:30px 56px 0;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="font-family:${f.body};font-size:11px;letter-spacing:4px;text-transform:uppercase;color:${c.goldInk};font-weight:500;padding-right:14px;">${S.eyebrow}</td><td width="60" style="width:60px;"><div style="height:1px;background:${c.gold};font-size:0;line-height:0;">&nbsp;</div></td></tr></table>
+<h1 class="h1" style="margin:14px 0 0;font-family:${f.heading};font-weight:400;font-size:44px;line-height:1.06;letter-spacing:-0.6px;color:${c.ink};">${S.h1}</h1>
+<p style="margin:16px 0 0;font-family:${f.body};font-size:16px;line-height:1.6;color:${c.body};">${S.p}</p></td></tr></table>`;
+    return [
+      K.header({ tagline: tagline(lang), rule: true }),
+      lead,
+      K.button({ label: S.cta, url: "{{ customer.subscribe_url }}", dark: true, padTop: 30 }),
+      K.para(S.ignore, { size: 13, color: c.muted, padTop: 26, max: 440 }),
+      K.para(S.unsub, { size: 13, color: c.muted, padTop: 6, max: 440 }),
+      K.spacer(26),
+      K.footer({ lang, quote: "", nav: false, marketing: false }),
+    ].join("\n");
+  },
+};
+
+module.exports = [welcomeClub, accountReady, verificationCode, guardianConsent, marketingConfirmation];

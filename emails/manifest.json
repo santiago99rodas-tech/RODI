@@ -360,5 +360,27 @@
       "member_name (optional)",
       "shop.url"
     ]
+  },
+  {
+    "id": "marketing-confirmation",
+    "title": {
+      "es": "Confirma tu suscripción",
+      "en": "Confirm your subscription"
+    },
+    "channel": {
+      "type": "shopify",
+      "trigger": "Shopify notification 'Customer marketing confirmation' (double opt-in for new email subscribers, e.g. the Notify me form)"
+    },
+    "marketing": false,
+    "subject": {
+      "es": "Confirma tu suscripción a RODI",
+      "en": "Confirm your RODI subscription",
+      "fr": "Confirmez votre abonnement à RODI",
+      "it": "Conferma la tua iscrizione a RODI"
+    },
+    "variables": [
+      "customer.subscribe_url",
+      "shop.url"
+    ]
   }
 ]
