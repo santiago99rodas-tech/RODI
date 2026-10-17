@@ -7,6 +7,7 @@ import {
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
+import { JournalFailure, addPhoto, getPhoto, pruneUnusedPhotos, readBook, savePage } from "../journal-book.server";
 import { resolveMembership } from "../membership.server";
 import { saveNationalities } from "../nationality.server";
 import { readProfileGate, sanitizeResidence, saveResidence } from "../profile-gate.server";
@@ -332,6 +333,23 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     return Response.json({
       plan: { id: plan.id, name: plan.name, currency: plan.currency, total: plan.total, tripId: plan.tripId, updatedAt: plan.updatedAt, data },
     });
+  }
+
+  // Journal book (Club): the member's pages, their visited countries and photo quota; one photo's bytes (own only).
+  if (searchParams.get("journalBook") || searchParams.get("journalPhoto")) {
+    const membership = await resolveMembership(session.shop, customerId);
+    if (!membership.isClub) {
+      return Response.json({ error: "CLUB_ONLY", feature: "journal" }, { status: 403 });
+    }
+    const photoId = searchParams.get("journalPhoto");
+    if (photoId) {
+      const photo = await getPhoto(session.shop, customerId, photoId);
+      if (!photo) return new Response("Not found", { status: 404 });
+      return new Response(photo.bytes, {
+        headers: { "Content-Type": photo.mime, "Cache-Control": "private, max-age=86400", "Content-Length": String(photo.size), "X-Content-Type-Options": "nosniff" },
+      });
+    }
+    return Response.json(await readBook(session.shop, customerId));
   }
 
   if (searchParams.get("journal")) {
@@ -1420,6 +1438,35 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       if (!entry) return Response.json({ error: "Not found" }, { status: 404 });
       await db.journalEntry.delete({ where: { id: body.entryId } });
       return Response.json({ ok: true });
+    }
+
+    case "saveJournalPage": {
+      if (!membership.isClub) {
+        return Response.json({ error: "CLUB_ONLY", feature: "journal" }, { status: 403 });
+      }
+      try {
+        const page = await savePage(shop, customerId, body.country, { quote: body.quote, items: body.items });
+        try { await pruneUnusedPhotos(shop, customerId); } catch (err) { console.error("pruneUnusedPhotos failed", err); }
+        return Response.json({ country: body.country, ...page });
+      } catch (err) {
+        if (err instanceof JournalFailure) return Response.json({ error: err.code }, { status: err.status });
+        console.error("saveJournalPage failed", err);
+        return Response.json({ error: "Could not save page" }, { status: 500 });
+      }
+    }
+
+    case "addJournalPhoto": {
+      if (!membership.isClub) {
+        return Response.json({ error: "CLUB_ONLY", feature: "journal" }, { status: 403 });
+      }
+      try {
+        const photo = await addPhoto(shop, customerId, body.dataUrl);
+        return Response.json({ id: photo.id, count: photo.count });
+      } catch (err) {
+        if (err instanceof JournalFailure) return Response.json({ error: err.code }, { status: err.status });
+        console.error("addJournalPhoto failed", err);
+        return Response.json({ error: "Could not save photo" }, { status: 500 });
+      }
     }
 
     case "createCommunityQuestion": {
