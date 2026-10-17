@@ -156,7 +156,8 @@ export async function getLegalState(shop: string, customerId: string | null): Pr
   };
   // LEGAL_GATE=off lets the app be deployed (community filter, privacy webhooks...) before the v2 legal documents are
   // published: nobody is asked to accept and nothing is restricted. Remove the variable the day the documents go live.
-  if (process.env.LEGAL_GATE === "off") return { ...state, needsAcceptance: false, restricted: false };
+  // tolerant on purpose: a panel may store the value with quotes or spaces ("off", off ), and any casing
+  if (/^["']?\s*off\s*["']?$/i.test(process.env.LEGAL_GATE ?? "")) return { ...state, needsAcceptance: false, restricted: false };
   return { ...state, restricted: isRestricted(state) };
 }
 
