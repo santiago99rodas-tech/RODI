@@ -678,7 +678,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       if (!day || day.trip.shop !== shop || day.trip.customerId !== customerId) {
         return Response.json({ error: "Not found" }, { status: 404 });
       }
-      if (!membership.isClub) {
+      const suggestedByRodi = body.suggested === true;
+      if (!membership.isClub && !suggestedByRodi) {
         const tripActivityCount = await db.activity.count({ where: { day: { tripId: day.tripId }, suggested: false } });
         if (tripActivityCount >= FREE_TIMELINE_ACTIVITY_LIMIT) {
           return Response.json(
@@ -695,6 +696,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           title: String(body.title ?? "Actividad"),
           category: body.category ?? null,
           location: body.location ?? null,
+          note: body.note ? String(body.note).slice(0, 300) : null,
+          suggested: suggestedByRodi,
           imageUrl: body.imageUrl ?? null,
           sortOrder: count,
         },
