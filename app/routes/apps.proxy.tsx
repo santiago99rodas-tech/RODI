@@ -810,6 +810,22 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return Response.json({ place: updated });
     }
 
+    // The map locates the activities of the itinerary that have no coordinates yet (the places RODI suggested) and saves what it found.
+    case "mapSetCoords": {
+      if (!membership.isClub) return clubOnlyMap();
+      const items = (Array.isArray(body.items) ? body.items : []).slice(0, 60);
+      let saved = 0;
+      for (const it of items) {
+        const lat = Number(it && it.lat), lng = Number(it && it.lng), id = String((it && it.id) ?? "");
+        if (!id || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) continue;
+        const act = await db.activity.findUnique({ where: { id }, include: { day: { include: { trip: true } } } });
+        if (!act || act.day.trip.shop !== shop || act.day.trip.customerId !== customerId) continue;
+        await db.activity.update({ where: { id }, data: { lat, lng } });
+        saved++;
+      }
+      return Response.json({ ok: true, saved });
+    }
+
     case "mapDeletePlace": {
       if (!membership.isClub) return clubOnlyMap();
       const id = String(body.id ?? "");
