@@ -9,7 +9,8 @@ export const WIZARD_ROUTES = ["ess", "likes", "slow", "off"] as const;
 
 export type WizardLeg = { c: string; h: string; n: string; d: number };
 export type WizardPlan = { mode: "have" | "suggest"; route?: string; legs?: WizardLeg[] };
-export type TripWizard = { who: (typeof WIZARD_WHO)[number] | null; people: number; likes: string[]; countries: string[]; plan: WizardPlan | null };
+// origin: the city the trip starts from; ret: where it ends when that is not the same city (empty = back to the origin); trav: the itinerary has a travel day going and another coming back.
+export type TripWizard = { who: (typeof WIZARD_WHO)[number] | null; people: number; likes: string[]; countries: string[]; plan: WizardPlan | null; origin: string; ret: string; trav: boolean };
 
 const clean = (v: unknown, max: number) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, max);
 
@@ -42,6 +43,7 @@ export function sanitizeWizard(raw: unknown): TripWizard | null {
   const plan = sanitizePlan(r.plan);
   const n = Math.round(Number(r.people));
   const people = who === "solo" ? 1 : Number.isFinite(n) ? Math.min(20, Math.max(who ? 2 : 1, n)) : who ? 2 : 1;
-  if (!who && !likes.length && !countries.length && !plan) return null;
-  return { who, people, likes, countries, plan };
+  const origin = clean(r.origin, 80), ret = clean(r.ret, 80), trav = r.trav === true;
+  if (!who && !likes.length && !countries.length && !plan && !origin) return null;
+  return { who, people, likes, countries, plan, origin, ret, trav };
 }

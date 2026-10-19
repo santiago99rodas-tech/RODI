@@ -589,6 +589,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             ? { budgetTotal: body.budgetTotal === null || body.budgetTotal === "" ? null : Number(body.budgetTotal) }
             : {}),
           ...(body.budgetCurrency !== undefined ? { budgetCurrency: body.budgetCurrency } : {}),
+          ...(body.wizard !== undefined ? { wizard: (() => { const w = sanitizeWizard(body.wizard); return w ? JSON.stringify(w) : null; })() } : {}),
         },
       });
       return Response.json({ trip });
