@@ -204,11 +204,15 @@ model EmergencyContact {
   name       String
   phone      String?
   note       String?
+  // "companion" = someone travelling with the member on trip `tripId` (no foreign key: the contact survives the trip), "contact" = anyone else
+  kind       String   @default("contact")
+  tripId     String?
   sortOrder  Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   @@index([shop, customerId])
+  @@index([shop, customerId, tripId])
 }
 
 // Internal bookkeeping for RODI Club membership state — never read directly

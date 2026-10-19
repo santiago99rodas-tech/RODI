@@ -1349,16 +1349,21 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       if (!membership.isClub) {
         return Response.json({ error: "CLUB_ONLY", feature: "emergency" }, { status: 403 });
       }
-      const name = String(body.name ?? "").trim();
+      const name = String(body.name ?? "").trim().slice(0, 60);
       if (!name) return Response.json({ error: "Name is required" }, { status: 400 });
+      // a companion belongs to one of the member's own trips
+      const tripId = typeof body.tripId === "string" && body.tripId ? body.tripId : null;
+      if (tripId) await assertTripOwnership(tripId, shop, customerId);
       const count = await db.emergencyContact.count({ where: { shop, customerId } });
       const contact = await db.emergencyContact.create({
         data: {
           shop,
           customerId,
           name,
-          phone: body.phone ?? null,
-          note: body.note ?? null,
+          phone: body.phone ? String(body.phone).trim().slice(0, 30) : null,
+          note: body.note ? String(body.note).trim().slice(0, 120) : null,
+          kind: tripId && body.kind === "companion" ? "companion" : "contact",
+          tripId: tripId && body.kind === "companion" ? tripId : null,
           sortOrder: count,
         },
       });
