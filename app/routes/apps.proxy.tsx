@@ -614,6 +614,41 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return Response.json({ day });
     }
 
+    // Plan-a-trip assistant: the days of a trip and the activities suggested for each one, in a single request.
+    // Suggested activities are free of the Free-plan activity limit (the member only pays that limit with what they add themselves).
+    case "createTripPlan": {
+      await assertTripOwnership(body.tripId, shop, customerId);
+      const planDays = Array.isArray(body.days) ? body.days.slice(0, 60) : [];
+      const existing = await db.day.count({ where: { tripId: body.tripId } });
+      let activities = 0;
+      for (let i = 0; i < planDays.length; i++) {
+        const d = planDays[i] || {};
+        if (!d.date) continue;
+        const day = await db.day.create({
+          data: { tripId: body.tripId, date: new Date(d.date), title: d.title ? String(d.title).slice(0, 120) : null, sortOrder: existing + i },
+        });
+        const items = Array.isArray(d.items) ? d.items.slice(0, 12) : [];
+        for (let k = 0; k < items.length; k++) {
+          const it = items[k] || {};
+          if (!it.title) continue;
+          await db.activity.create({
+            data: {
+              dayId: day.id,
+              time: it.time ? String(it.time).slice(0, 12) : null,
+              title: String(it.title).slice(0, 140),
+              category: it.category ? String(it.category).slice(0, 30) : null,
+              location: it.location ? String(it.location).slice(0, 140) : null,
+              note: it.note ? String(it.note).slice(0, 300) : null,
+              suggested: true,
+              sortOrder: k,
+            },
+          });
+          activities++;
+        }
+      }
+      return Response.json({ ok: true, days: planDays.length, activities });
+    }
+
     case "updateDay": {
       const day = await db.day.findUnique({ where: { id: body.dayId }, include: { trip: true } });
       if (!day || day.trip.shop !== shop || day.trip.customerId !== customerId) {
@@ -644,7 +679,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         return Response.json({ error: "Not found" }, { status: 404 });
       }
       if (!membership.isClub) {
-        const tripActivityCount = await db.activity.count({ where: { day: { tripId: day.tripId } } });
+        const tripActivityCount = await db.activity.count({ where: { day: { tripId: day.tripId }, suggested: false } });
         if (tripActivityCount >= FREE_TIMELINE_ACTIVITY_LIMIT) {
           return Response.json(
             { error: "FREE_TIMELINE_LIMIT", limit: FREE_TIMELINE_ACTIVITY_LIMIT },

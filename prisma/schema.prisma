@@ -112,6 +112,8 @@ model Activity {
   lat       Float?
   lng       Float?
   note      String?
+  // true = proposed by the Plan-a-trip assistant (not counted against the Free activity limit)
+  suggested Boolean  @default(false)
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
