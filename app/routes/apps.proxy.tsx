@@ -54,6 +54,12 @@ function exportResponse(data: unknown) {
 // to move.
 const FREE_TRIP_LIMIT = 1;
 const FREE_TIMELINE_ACTIVITY_LIMIT = 5;
+// The activities RODI suggests (and the hotel of each night) are free of the limit above, but the "suggested" mark comes from the page,
+// so a Free member could also send it on their own entries. These ceilings keep that from being a way around the limit:
+// a Free trip has at most FREE_DAYS_PER_TRIP days and FREE_SUGGESTED_PER_DAY suggested activities per day (plus some slack).
+const FREE_DAYS_PER_TRIP = 62;
+const FREE_SUGGESTED_PER_DAY = 10;
+const FREE_SUGGESTED_SLACK = 10;
 const FREE_BUDGET_EXPENSE_LIMIT = 10;
 
 // Single endpoint for the theme's Trip Planner UI, reached via Shopify's App
@@ -604,6 +610,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     case "createDay": {
       await assertTripOwnership(body.tripId, shop, customerId);
       const count = await db.day.count({ where: { tripId: body.tripId } });
+      if (!membership.isClub && count >= FREE_DAYS_PER_TRIP) {
+        return Response.json({ error: "FREE_DAY_LIMIT", limit: FREE_DAYS_PER_TRIP }, { status: 403 });
+      }
       const day = await db.day.create({
         data: {
           tripId: body.tripId,
@@ -621,6 +630,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       await assertTripOwnership(body.tripId, shop, customerId);
       const planDays = Array.isArray(body.days) ? body.days.slice(0, 60) : [];
       const existing = await db.day.count({ where: { tripId: body.tripId } });
+      if (!membership.isClub && existing + planDays.length > FREE_DAYS_PER_TRIP) {
+        return Response.json({ error: "FREE_DAY_LIMIT", limit: FREE_DAYS_PER_TRIP }, { status: 403 });
+      }
+      // Free: the suggested activities of the trip stay under the ceiling (the plan is trimmed, never refused halfway)
+      let room = membership.isClub
+        ? Infinity
+        : (existing + planDays.length) * FREE_SUGGESTED_PER_DAY + FREE_SUGGESTED_SLACK - (await db.activity.count({ where: { day: { tripId: body.tripId }, suggested: true } }));
       let activities = 0;
       for (let i = 0; i < planDays.length; i++) {
         const d = planDays[i] || {};
@@ -632,6 +648,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         for (let k = 0; k < items.length; k++) {
           const it = items[k] || {};
           if (!it.title) continue;
+          if (room <= 0) break;
+          room--;
           await db.activity.create({
             data: {
               dayId: day.id,
@@ -680,6 +698,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         return Response.json({ error: "Not found" }, { status: 404 });
       }
       const suggestedByRodi = body.suggested === true;
+      if (!membership.isClub && suggestedByRodi) {
+        const [dayCount, suggestedCount] = await Promise.all([
+          db.day.count({ where: { tripId: day.tripId } }),
+          db.activity.count({ where: { day: { tripId: day.tripId }, suggested: true } }),
+        ]);
+        if (suggestedCount >= dayCount * FREE_SUGGESTED_PER_DAY + FREE_SUGGESTED_SLACK) {
+          return Response.json({ error: "FREE_SUGGESTED_LIMIT", limit: dayCount * FREE_SUGGESTED_PER_DAY + FREE_SUGGESTED_SLACK }, { status: 403 });
+        }
+      }
       if (!membership.isClub && !suggestedByRodi) {
         const tripActivityCount = await db.activity.count({ where: { day: { tripId: day.tripId }, suggested: false } });
         if (tripActivityCount >= FREE_TIMELINE_ACTIVITY_LIMIT) {
