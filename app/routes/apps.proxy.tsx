@@ -717,6 +717,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           ...(body.title !== undefined ? { title: body.title } : {}),
           ...(body.category !== undefined ? { category: body.category } : {}),
           ...(body.location !== undefined ? { location: body.location } : {}),
+          ...(body.note !== undefined ? { note: body.note === null ? null : String(body.note).slice(0, 300) } : {}),
           ...(body.imageUrl !== undefined ? { imageUrl: body.imageUrl } : {}),
           ...(body.sortOrder !== undefined ? { sortOrder: body.sortOrder } : {}),
         },
