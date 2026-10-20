@@ -9,8 +9,12 @@ export const PACK_ACTIVITIES = [
   "snow", "gym", "yoga", "spa", "night", "event", "formal", "work", "biz",
 ] as const;
 
+// the bags the member brings: a personal item (0/1), cabin bags, 23 kg and 32 kg checked bags, and up to four of any other weight (kg)
+export type PackBags = { pers: number; cab: number; c23: number; c32: number; cx: number[] };
+
 export type PackPrefs = {
   lug: (typeof PACK_LUGGAGE)[number];
+  bl?: PackBags; // the bags above (lug and bags stay as the simple summary older pages read)
   bags: number; // checked bags, 1 to 3 (only meaningful when lug === "checked")
   laun: boolean; // can wash clothes mid-trip
   trav: number; // travelers
@@ -33,8 +37,15 @@ export function sanitizePackPrefs(raw: unknown): PackPrefs | null {
   const acts = [...new Set(r.acts.filter((a): a is string => typeof a === "string"))].filter((a) => (PACK_ACTIVITIES as readonly string[]).includes(a));
   const place = typeof r.place === "string" ? r.place : "";
   if (!HANDLE.test(place)) return null;
+  let bl: PackBags | undefined;
+  if (r.bl && typeof r.bl === "object") {
+    const b = r.bl as Record<string, unknown>, n = (v: unknown, max: number) => Math.min(max, Math.max(0, Math.round(Number(v)) || 0));
+    const cx = Array.isArray(b.cx) ? b.cx.map((v) => Math.round(Number(v))).filter((v) => Number.isFinite(v) && v >= 5 && v <= 50).slice(0, 4) : [];
+    bl = { pers: n(b.pers, 1), cab: n(b.cab, 3), c23: n(b.c23, 6), c32: n(b.c32, 6), cx };
+  }
   return {
     lug: r.lug as PackPrefs["lug"],
+    ...(bl ? { bl } : {}),
     bags: Math.min(3, Math.max(1, bags)),
     laun: r.laun === true,
     trav: Math.min(12, Math.max(1, trav)),
