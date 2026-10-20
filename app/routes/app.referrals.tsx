@@ -14,8 +14,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     db.referral.count({ where: { shop, status: "rewarded" } }),
     db.referral.findMany({ where: { shop }, orderBy: { createdAt: "desc" }, take: 50 }),
   ]);
+  // The rules come through the loader: a .server module cannot be imported by the page component itself.
+  const rules = { friend: REFERRAL_FRIEND_MONTHS, referrer: REFERRAL_REFERRER_MONTHS, max: REFERRAL_REFERRER_MAX_MONTHS, pending: REFERRAL_MAX_PENDING };
   return {
     shop,
+    rules,
     codes,
     pending,
     rewarded,
@@ -24,7 +27,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export default function Referrals() {
-  const { shop, codes, pending, rewarded, recent } = useLoaderData<typeof loader>();
+  const { shop, rules, codes, pending, rewarded, recent } = useLoaderData<typeof loader>();
   const store = shop.replace(".myshopify.com", "");
   const customerUrl = (id: string) => `https://admin.shopify.com/store/${store}/customers/${id}`;
   const day = (iso: string) => new Date(iso).toLocaleDateString("es-CO");
@@ -32,7 +35,7 @@ export default function Referrals() {
     <s-page heading="Invita a un amigo">
       <s-section heading="Cómo funciona">
         <s-paragraph>
-          Cada miembro tiene un código y un enlace (rodiclub.com/?ref=CÓDIGO). Cuando su amigo entra con ese enlace, crea su cuenta y crea su primer viaje, el amigo recibe {REFERRAL_FRIEND_MONTHS} mes de Club y quien invitó recibe {REFERRAL_REFERRER_MONTHS} mes (hasta {REFERRAL_REFERRER_MAX_MONTHS} meses en total). La cuenta del amigo debe tener menos de 30 días y ningún viaje previo; cada persona acepta una sola invitación y cada miembro puede tener hasta {REFERRAL_MAX_PENDING} invitaciones pendientes.
+          Cada miembro tiene un código y un enlace (rodiclub.com/?ref=CÓDIGO). Cuando su amigo entra con ese enlace, crea su cuenta y crea su primer viaje, el amigo recibe {rules.friend} mes de Club y quien invitó recibe {rules.referrer} mes (hasta {rules.max} meses en total). La cuenta del amigo debe tener menos de 30 días y ningún viaje previo; cada persona acepta una sola invitación y cada miembro puede tener hasta {rules.pending} invitaciones pendientes.
         </s-paragraph>
       </s-section>
       <s-section heading="Resumen">
