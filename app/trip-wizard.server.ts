@@ -1,3 +1,5 @@
+import { sanitizeJourney, type Journey } from "./journey.server";
+
 // What the "Plan a trip" assistant asks besides destination and dates: who is travelling, what they like to do, which countries
 // (a trip can have several) and whether they already have an itinerary or chose one of the suggested routes.
 // Stored as one JSON string on Trip.wizard. The packing page reads it as the starting point of the smart list, and the itinerary
@@ -22,6 +24,8 @@ export type WizardPlan = { mode: "have" | "suggest"; route?: string; legs?: Wiza
 export type TripWizard = {
   who: (typeof WIZARD_WHO)[number] | null; people: number; likes: string[]; countries: string[]; plan: WizardPlan | null;
   origin: string; ret: string; trav: boolean; pace: string; pets: { kind: string; size: string } | null; keep: string[]; skip: string[];
+  // how the way there and the way back are travelled (mode, dates and times, stops); see journey.server.ts
+  jr: { out: Journey | null; back: Journey | null } | null;
 };
 
 const clean = (v: unknown, max: number) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, max);
@@ -63,6 +67,9 @@ export function sanitizeWizard(raw: unknown): TripWizard | null {
     : null;
   const list = (v: unknown) => (Array.isArray(v) ? [...new Set(v.map((x) => clean(x, 120)).filter(Boolean))].slice(0, 400) : []);
   const keep = list(r.keep), skip = list(r.skip);
-  if (!who && !likes.length && !countries.length && !plan && !origin && !pace && !pets && !keep.length && !skip.length) return null;
-  return { who, people, likes, countries, plan, origin, ret, trav, pace, pets, keep, skip };
+  const jrRaw = (r.jr && typeof r.jr === "object" ? r.jr : null) as Record<string, unknown> | null;
+  const jrOut = jrRaw ? sanitizeJourney(jrRaw.out) : null, jrBack = jrRaw ? sanitizeJourney(jrRaw.back) : null;
+  const jr = jrOut || jrBack ? { out: jrOut, back: jrBack } : null;
+  if (!who && !likes.length && !countries.length && !plan && !origin && !pace && !pets && !keep.length && !skip.length && !jr) return null;
+  return { who, people, likes, countries, plan, origin, ret, trav, pace, pets, keep, skip, jr };
 }

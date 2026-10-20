@@ -8,6 +8,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { saveReport } from "../place-report.server";
+import { estimateJourney } from "../journey.server";
 import { claimReferral, qualifyReferral, referralSummary } from "../referral.server";
 import { JournalFailure, addPhoto, getPhoto, pruneUnusedPhotos, readBook, saveCover, savePage } from "../journal-book.server";
 import { resolveMembership } from "../membership.server";
@@ -414,6 +415,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }
     const recommendations = buckets.filter((b) => b.ratio < 1).map((b) => b.key);
     return Response.json({ score, buckets, recommendations });
+  }
+
+  // Approximate duration of a journey between two cities (straight-line distance, per mode). Open to any signed-in member, Free or Club.
+  if (searchParams.get("journeyEstimate") !== null) {
+    if (!allowSearch(customerId)) return Response.json({ error: "RATE_LIMIT" }, { status: 429 });
+    try {
+      return Response.json(await estimateJourney(searchParams.get("from") || "", searchParams.get("to") || ""));
+    } catch {
+      return Response.json({ ok: false, error: "UNAVAILABLE" }, { status: 502 });
+    }
   }
 
   if (searchParams.get("mapSearch") !== null) {
