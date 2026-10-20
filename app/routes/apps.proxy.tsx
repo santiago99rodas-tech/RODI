@@ -7,6 +7,7 @@ import {
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
+import { saveReport } from "../place-report.server";
 import { JournalFailure, addPhoto, getPhoto, pruneUnusedPhotos, readBook, saveCover, savePage } from "../journal-book.server";
 import { resolveMembership } from "../membership.server";
 import { saveNationalities } from "../nationality.server";
@@ -1541,6 +1542,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         console.error("saveJournalPage failed", err);
         return Response.json({ error: "Could not save page" }, { status: 500 });
       }
+    }
+
+    // A member tells RODI that a suggested place has closed. Open to any signed-in member (Free or Club).
+    case "reportPlace": {
+      const res = await saveReport(shop, customerId, { name: body.name, city: body.city, country: body.country });
+      if ("error" in res) return Response.json({ error: res.error }, { status: res.error === "RATE_LIMIT" ? 429 : 400 });
+      return Response.json({ ok: true });
     }
 
     case "saveJournalCover": {

@@ -49,7 +49,7 @@ async function readManagedMetafields(admin: AdminApiContext, customerId: string)
 export async function buildCustomerExport(shop: string, customerId: string, opts: { admin?: AdminApiContext | null; includeInternal?: boolean } = {}) {
   const who = { shop, customerId };
   const [
-    trips, documents, emergencyContacts, journalEntries, journalPages, journalCovers, journalPhotoRows, communityPosts, communityReplies, communityLikes,
+    trips, documents, emergencyContacts, journalEntries, journalPages, journalCovers, placeReports, journalPhotoRows, communityPosts, communityReplies, communityLikes,
     legacyQuestions, legacyAnswers, legacyRecommendations, calculatorPlans, countrySaves, countryTravel,
     serviceInquiries, memberships, emailLogs, campaignRecipients, abandonedCarts, legalAcceptances, guardianConsents, dataRequests,
   ] = await Promise.all([
@@ -70,6 +70,7 @@ export async function buildCustomerExport(shop: string, customerId: string, opts
     db.journalEntry.findMany({ where: who }),
     db.journalPage.findMany({ where: who }),
     db.journalCover.findMany({ where: who }),
+    db.placeReport.findMany({ where: who }),
     db.journalPhoto.findMany({ where: who, orderBy: { createdAt: "asc" } }),
     db.communityPost.findMany({ where: who }),
     db.communityReply.findMany({ where: who }),
@@ -109,6 +110,7 @@ export async function buildCustomerExport(shop: string, customerId: string, opts
     documents,
     emergencyContacts,
     journalEntries,
+    placeReports: placeReports.map((p) => ({ name: p.name, city: p.city, country: p.country, status: p.status, createdAt: p.createdAt })),
     journal: {
       pages: journalPages.map((pg) => ({ country: pg.countryHandle, updatedAt: pg.updatedAt, ...parseStored(pg.data) })),
       covers: journalCovers.map((c) => ({ continent: c.continent, title: c.title, color: c.color, updatedAt: c.updatedAt })),
@@ -205,6 +207,7 @@ export async function deleteCustomerRows(shop: string, customerId: string) {
     await tx.journalEntry.deleteMany({ where: who });
     await tx.journalPage.deleteMany({ where: who });
     await tx.journalCover.deleteMany({ where: who });
+    await tx.placeReport.deleteMany({ where: who });
     await tx.journalPhoto.deleteMany({ where: who });
     await tx.serviceInquiry.deleteMany({ where: who });
     await tx.calculatorPlan.deleteMany({ where: who });
@@ -381,6 +384,7 @@ export async function redactShop(shop: string) {
     db.journalEntry.deleteMany({ where: w }),
     db.journalPage.deleteMany({ where: w }),
     db.journalCover.deleteMany({ where: w }),
+    db.placeReport.deleteMany({ where: w }),
     db.journalPhoto.deleteMany({ where: w }),
     db.serviceInquiry.deleteMany({ where: w }),
     db.calculatorPlan.deleteMany({ where: w }),

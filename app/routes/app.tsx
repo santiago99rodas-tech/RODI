@@ -23,6 +23,7 @@ export default function App() {
         <s-link href="/app/membership-backfill">Promo lanzamiento</s-link>
         <s-link href="/app/community-moderation">Moderación</s-link>
         <s-link href="/app/service-inquiries">Consultas servicios</s-link>
+        <s-link href="/app/place-reports">Avisos de lugares</s-link>
         <s-link href="/app/email">Correo (Resend)</s-link>
         <s-link href="/app/campaigns">Campañas</s-link>
         <s-link href="/app/abandoned-carts">Carritos abandonados</s-link>

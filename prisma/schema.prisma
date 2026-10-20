@@ -295,6 +295,22 @@ model JournalCover {
   @@index([shop, customerId])
 }
 
+// "Is it closed?" notices from members about a place RODI suggested. One row per member and place; the staff reviews them in the app.
+model PlaceReport {
+  id         String   @id @default(cuid())
+  shop       String
+  customerId String
+  country    String   @default("")
+  city       String   @default("")
+  name       String
+  norm       String
+  status     String   @default("new")
+  createdAt  DateTime @default(now())
+
+  @@unique([shop, customerId, city, norm])
+  @@index([shop, status])
+}
+
 model JournalPhoto {
   id         String   @id @default(cuid())
   shop       String
