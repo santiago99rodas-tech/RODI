@@ -21,6 +21,19 @@ export type EffectiveMembership = {
 
 const PROMO_MONTHS = Number(process.env.PROMO_MONTHS) || 3;
 
+// The launch plan (PROMO_MONTHS of Club) is only for people who register while the public launch window is open: February
+// 2027 by default (Colombia time). Before that, every new account starts on Free and the owner decides, one by one, who gets
+// Club (Admin > Membresías Club). Override with PROMO_WINDOW_START / PROMO_WINDOW_END (ISO dates, end exclusive).
+const parseDate = (value: string | undefined, fallback: string) => {
+  const date = new Date(value || fallback);
+  return Number.isNaN(date.getTime()) ? new Date(fallback) : date;
+};
+export function launchPromoOpen(now: Date = new Date()): boolean {
+  const start = parseDate(process.env.PROMO_WINDOW_START, "2027-02-01T00:00:00-05:00");
+  const end = parseDate(process.env.PROMO_WINDOW_END, "2027-03-01T00:00:00-05:00");
+  return now >= start && now < end;
+}
+
 function addMonths(date: Date, months: number): Date {
   const result = new Date(date);
   result.setMonth(result.getMonth() + months);
@@ -63,6 +76,11 @@ export async function grantPromotionalAccess(shop: string, customerId: string, s
   if (existing) return existing; // already has a row — never silently re-grant on a later webhook
 
   const now = new Date();
+  // Outside the launch window the account starts on Free. The row is kept (like "Set to Free") so a later webhook can
+  // never hand it a promo; the owner grants Club by hand when they want to. Manual backfills are explicit, so they still grant.
+  if (source !== "manual_backfill" && !launchPromoOpen(now)) {
+    return db.membership.create({ data: { shop, customerId, status: "FREE", promoSource: "prelaunch_free" } });
+  }
   return db.membership.create({
     data: {
       shop,
