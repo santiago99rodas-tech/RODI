@@ -6,6 +6,7 @@ import { normalizeLocale, renderEmail, type EmailLocale } from "./email-render.s
 import { resendConfig, sendBatch, sendEmail } from "./resend.server";
 import { resolveMembership } from "./membership.server";
 import { unsubscribeUrl } from "./unsubscribe.server";
+import { codeFor, shareUrlFor } from "./referral.server";
 
 // Marketing campaigns (Admin > Campaigns). The flow is: validate the fields -> snapshot the audience (customers who
 // accepted marketing emails in Shopify) and the products -> send in batches of 50 from the admin screen, which keeps
@@ -113,7 +114,7 @@ export async function fetchAudience(admin: AdminApiContext, shop: string, audien
 // ---------------------------------------------------------------------------------------------------------------
 // Rendering
 
-function templateData(params: CampaignParams, unsubscribe: string, escape = true): Record<string, unknown> {
+function templateData(params: CampaignParams, unsubscribe: string, escape = true, extra: Record<string, unknown> = {}): Record<string, unknown> {
   const f = params.fields;
   const safe = (key: string) => (f[key] ? (escape ? escapeHtml(f[key]) : f[key]) : undefined);
   return {
@@ -135,13 +136,15 @@ function templateData(params: CampaignParams, unsubscribe: string, escape = true
         }
       : undefined,
     unsubscribe_url: unsubscribe,
+    ...extra,
   };
 }
 
 export const previewCampaign = (template: CampaignTemplateId, params: CampaignParams, locale: EmailLocale) =>
   {
   const link = `${storefront()}/#unsubscribe-preview`;
-  return renderEmail(template, locale, templateData(params, link), templateData(params, link, false));
+  const sample = template === "referral" ? { referral_code: "RODIK7M2Q", share_url: shareUrlFor("RODIK7M2Q") } : {};
+  return renderEmail(template, locale, templateData(params, link, true, sample), templateData(params, link, false, sample));
 };
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -204,7 +207,9 @@ export async function sendNextBatch(shop: string, campaignId: string): Promise<{
   for (const recipient of batch) {
     try {
       const link = unsubscribeUrl(shop, recipient.customerId, recipient.locale);
-      const { subject, html } = await renderEmail(campaign.template as CampaignTemplateId, normalizeLocale(recipient.locale), templateData(params, link), templateData(params, link, false));
+      // The referral email is personal: each person gets their own invitation code and link.
+      const extra = campaign.template === "referral" ? await (async () => { const code = await codeFor(shop, recipient.customerId); return { referral_code: code, share_url: shareUrlFor(code) }; })() : {};
+      const { subject, html } = await renderEmail(campaign.template as CampaignTemplateId, normalizeLocale(recipient.locale), templateData(params, link, true, extra), templateData(params, link, false, extra));
       items.push({
         recipient,
         message: { to: recipient.email, subject, html, headers: { "List-Unsubscribe": `<${link}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } },

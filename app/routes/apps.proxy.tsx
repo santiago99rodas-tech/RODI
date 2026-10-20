@@ -8,6 +8,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { saveReport } from "../place-report.server";
+import { claimReferral, qualifyReferral, referralSummary } from "../referral.server";
 import { JournalFailure, addPhoto, getPhoto, pruneUnusedPhotos, readBook, saveCover, savePage } from "../journal-book.server";
 import { resolveMembership } from "../membership.server";
 import { saveNationalities } from "../nationality.server";
@@ -280,6 +281,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
 
   const tripId = searchParams.get("tripId");
+
+  // Refer a friend: the member's invitation code, share link and what it has earned. Open to any signed-in member.
+  if (searchParams.get("referral")) {
+    return Response.json(await referralSummary(session.shop, customerId));
+  }
 
   // Fase 4, RODI Services. Open to any signed-in customer, no Club gate —
   // explicitly never returns internalNote (admin-only, see
@@ -579,7 +585,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           wizard: (() => { const w = sanitizeWizard(body.wizard); return w ? JSON.stringify(w) : null; })(),
         },
       });
-      return Response.json({ trip });
+      const referralMonths = await qualifyReferral(admin ?? null, shop, customerId); // pays a pending "refer a friend" reward on a first trip
+      return Response.json({ trip, ...(referralMonths ? { referralMonths } : {}) });
     }
 
     case "updateTrip": {
@@ -1549,6 +1556,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       const res = await saveReport(shop, customerId, { name: body.name, city: body.city, country: body.country });
       if ("error" in res) return Response.json({ error: res.error }, { status: res.error === "RATE_LIMIT" ? 429 : 400 });
       return Response.json({ ok: true });
+    }
+
+    // The friend arrives with a code (theme: assets/rodi-referral.js) and claims it once signed in. Definitive refusals are
+    // 4xx JSON so the theme can stop retrying; the reward itself is paid later, when the friend creates a first trip.
+    case "claimReferral": {
+      const res = await claimReferral(shop, customerId, body.code);
+      if ("error" in res) return Response.json({ error: res.error }, { status: 400 });
+      return Response.json(res);
     }
 
     case "saveJournalCover": {

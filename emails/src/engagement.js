@@ -36,12 +36,12 @@ const communityShare = {
 const referral = {
   id: "referral",
   title: { es: "Refiere a un amigo", en: "Refer a friend" },
-  channel: { type: "app", trigger: "Campaign or automation. Needs a referral feature that does not exist yet (a code per customer). No reward is promised in the copy until one is defined" },
+  channel: { type: "app", trigger: "Campaign (Admin > Campaigns, personal: each recipient gets their own code and link). Reward is real: when the friend creates a first trip, both get 1 month of Club (the member up to 6 months in total) - see app/referral.server.ts" },
   marketing: true,
   subject: all("referral", "subject"),
   preheader: all("referral", "preheader"),
   variables: ["referral_code", "share_url", "shop.url", "unsubscribe_url"],
-  sample: { referral_code: "RODI237", share_url: "https://rodiclub.com/pages/club" },
+  sample: { referral_code: "RODIK7M2Q", share_url: "https://rodiclub.com/?ref=RODIK7M2Q" },
   build(lang) {
     const S = copy("referral", lang);
     return [
@@ -53,9 +53,9 @@ const referral = {
       K.button({ label: S.cta, url: "{{ share_url }}" }),
       K.columns({
         items: [
-          { icon: "gift", title: S.cols[0][0], text: S.cols[0][1] },
-          { icon: "users", title: S.cols[1][0], text: S.cols[1][1] },
-          { icon: "compass", title: S.cols[2][0], text: S.cols[2][1] },
+          { icon: "users", title: S.cols[0][0], text: S.cols[0][1] },
+          { icon: "plane", title: S.cols[1][0], text: S.cols[1][1] },
+          { icon: "gift", title: S.cols[2][0], text: S.cols[2][1] },
         ],
       }),
       K.footer({ lang, quote: S.quote, marketing: true }),

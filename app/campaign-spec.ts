@@ -3,6 +3,7 @@
 
 export type CampaignTemplateId =
   | "community-share"
+  | "referral"
   | "winback"
   | "limited-offer"
   | "new-benefits"
@@ -33,6 +34,13 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplateSpec[] = [
     id: "community-share",
     label: "Comparte tus experiencias",
     description: "Invita a preguntar, recomendar y llevar su diario. Mejor para miembros Club, porque solo Club puede publicar.",
+    fields: [],
+    usesProducts: false,
+  },
+  {
+    id: "referral",
+    label: "Refiere a un amigo",
+    description: "Cada persona recibe su propio código y enlace de invitación. Cuando su amigo crea su primer viaje, los dos ganan 1 mes de Club (quien invita, hasta 6 meses en total).",
     fields: [],
     usesProducts: false,
   },

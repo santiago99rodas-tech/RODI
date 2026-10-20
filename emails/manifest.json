@@ -29,7 +29,7 @@
     },
     "channel": {
       "type": "app",
-      "trigger": "Campaign or automation. Needs a referral feature that does not exist yet (a code per customer). No reward is promised in the copy until one is defined"
+      "trigger": "Campaign (Admin > Campaigns, personal: each recipient gets their own code and link). Reward is real: when the friend creates a first trip, both get 1 month of Club (the member up to 6 months in total) - see app/referral.server.ts"
     },
     "marketing": true,
     "subject": {

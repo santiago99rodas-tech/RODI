@@ -75,6 +75,28 @@ export async function grantPromotionalAccess(shop: string, customerId: string, s
   });
 }
 
+// Adds whole months of Club on top of whatever the member has left (or from today when it already lapsed or never existed),
+// then projects the new date. Used by the referral reward. A paid ACTIVE period (Fase 2, not in use yet) is extended in place.
+export async function extendClubAccess(admin: AdminApiContext, shop: string, customerId: string, months: number, source: string) {
+  const key = { shop_customerId: { shop, customerId } };
+  const row = await db.membership.findUnique({ where: key });
+  const now = new Date();
+  if (row?.status === "ACTIVE" && row.currentPeriodEnd && row.currentPeriodEnd > now) {
+    await db.membership.update({ where: key, data: { currentPeriodEnd: addMonths(row.currentPeriodEnd, months) } });
+  } else {
+    const current = row?.promoEnd && row.promoEnd > now ? row.promoEnd : now;
+    const data = {
+      status: "PROMOTIONAL_ACCESS",
+      promoStart: row?.promoEnd && row.promoEnd > now && row.promoStart ? row.promoStart : now,
+      promoEnd: addMonths(current, months),
+      promoSource: row?.promoSource && row.promoEnd && row.promoEnd > now ? row.promoSource : source,
+      cancelledAt: null,
+    };
+    await db.membership.upsert({ where: key, create: { shop, customerId, ...data }, update: data });
+  }
+  await projectMembershipToMetafield(admin, shop, customerId);
+}
+
 const METAFIELD_NAMESPACE = "custom";
 const METAFIELD_KEY = "club_access_until";
 
