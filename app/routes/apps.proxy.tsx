@@ -7,7 +7,7 @@ import {
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
-import { JournalFailure, addPhoto, getPhoto, pruneUnusedPhotos, readBook, savePage } from "../journal-book.server";
+import { JournalFailure, addPhoto, getPhoto, pruneUnusedPhotos, readBook, saveCover, savePage } from "../journal-book.server";
 import { resolveMembership } from "../membership.server";
 import { saveNationalities } from "../nationality.server";
 import { readProfileGate, sanitizeResidence, saveResidence } from "../profile-gate.server";
@@ -1540,6 +1540,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         if (err instanceof JournalFailure) return Response.json({ error: err.code }, { status: err.status });
         console.error("saveJournalPage failed", err);
         return Response.json({ error: "Could not save page" }, { status: 500 });
+      }
+    }
+
+    case "saveJournalCover": {
+      if (!membership.isClub) {
+        return Response.json({ error: "CLUB_ONLY", feature: "journal" }, { status: 403 });
+      }
+      try {
+        return Response.json(await saveCover(shop, customerId, body.continent, { title: body.title, color: body.color }));
+      } catch (err) {
+        if (err instanceof JournalFailure) return Response.json({ error: err.code }, { status: err.status });
+        console.error("saveJournalCover failed", err);
+        return Response.json({ error: "Could not save cover" }, { status: 500 });
       }
     }
 

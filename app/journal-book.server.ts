@@ -23,6 +23,12 @@ export type JournalItem = {
 };
 export type JournalPageData = { quote: string; items: JournalItem[] };
 
+// Album covers: the six continents of the Journal and the ink colours a member can pick (the hex values live in the theme)
+export const COVER_CONTINENTS = ["europe", "africa", "south_america", "north_america", "asia", "oceania"] as const;
+export const COVER_COLORS = ["blue", "wine", "forest", "gold", "plum", "graphite", "clay", "teal"] as const;
+export const COVER_TITLE_MAX = 22;
+export type JournalCoverData = { title: string; color: string };
+
 export class JournalFailure extends Error {
   constructor(public code: string, public status = 400) {
     super(code);
@@ -99,12 +105,14 @@ export function parseStored(data: string): JournalPageData {
 }
 
 export async function readBook(shop: string, customerId: string) {
-  const [pages, photoCount, visited] = await Promise.all([
+  const [pages, photoCount, visited, covers] = await Promise.all([
     db.journalPage.findMany({ where: { shop, customerId } }),
     db.journalPhoto.count({ where: { shop, customerId } }),
     db.countryTravel.findMany({ where: { shop, customerId, status: "visited" }, select: { countryHandle: true } }),
+    db.journalCover.findMany({ where: { shop, customerId } }),
   ]);
   return {
+    covers: Object.fromEntries(covers.map((c) => [c.continent, { title: c.title, color: c.color }])),
     pages: pages.map((p) => ({ country: p.countryHandle, updatedAt: p.updatedAt, ...parseStored(p.data) })),
     visited: visited.map((v) => v.countryHandle),
     photos: { count: photoCount, max: JOURNAL_MAX_PHOTOS },
@@ -124,6 +132,27 @@ export async function savePage(shop: string, customerId: string, country: unknow
     update: { data },
   });
   return page;
+}
+
+// Pure: a cover is a known continent plus a short title and one of the ink colours (both may be empty = the default look).
+export function sanitizeCover(continent: unknown, input: unknown): { continent: (typeof COVER_CONTINENTS)[number]; title: string; color: string } {
+  const c = COVER_CONTINENTS.find((x) => x === continent);
+  if (!c) throw new JournalFailure("INVALID_CONTINENT");
+  const raw = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+  const color = COVER_COLORS.find((x) => x === raw.color) ?? "";
+  return { continent: c, title: str(raw.title, COVER_TITLE_MAX), color };
+}
+
+export async function saveCover(shop: string, customerId: string, continent: unknown, input: unknown) {
+  const cv = sanitizeCover(continent, input);
+  const where = { shop_customerId_continent: { shop, customerId, continent: cv.continent } };
+  if (!cv.title && !cv.color) {
+    // back to the default look: nothing to keep
+    await db.journalCover.deleteMany({ where: { shop, customerId, continent: cv.continent } });
+  } else {
+    await db.journalCover.upsert({ where, create: { shop, customerId, continent: cv.continent, title: cv.title, color: cv.color }, update: { title: cv.title, color: cv.color } });
+  }
+  return { continent: cv.continent, title: cv.title, color: cv.color };
 }
 
 export function decodeDataUrl(v: unknown): { mime: string; bytes: Buffer } {

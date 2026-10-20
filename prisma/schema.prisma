@@ -281,6 +281,20 @@ model JournalPage {
   @@index([shop, customerId])
 }
 
+// The look of one album cover (Journal, Club): a title and an ink colour per continent. Only what the member changed is stored.
+model JournalCover {
+  id         String   @id @default(cuid())
+  shop       String
+  customerId String
+  continent  String
+  title      String   @default("")
+  color      String   @default("")
+  updatedAt  DateTime @updatedAt
+
+  @@unique([shop, customerId, continent])
+  @@index([shop, customerId])
+}
+
 model JournalPhoto {
   id         String   @id @default(cuid())
   shop       String
