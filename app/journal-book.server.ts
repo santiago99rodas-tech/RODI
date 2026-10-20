@@ -10,14 +10,16 @@ const HANDLE_RE = /^[a-z0-9][a-z0-9-]{1,79}$/;
 const PHOTO_MIMES = ["image/jpeg", "image/webp", "image/png"];
 const NOTE_STYLES = ["yellow", "paper", "kraft", "hand"];
 const NOTE_FONTS = ["hand", "type", "serif"];
-const ITEM_TYPES = ["photo", "note", "place", "tape"];
+const STICKERS = ["plane", "heart", "star", "compass", "camera", "sun", "wave", "mountain", "coffee", "luggage", "flag", "palm"];
+const ITEM_TYPES = ["photo", "note", "place", "tape", "stamp", "ticket", "sticker"];
 
 export type JournalItem = {
   id: string;
-  type: "photo" | "note" | "place" | "tape";
+  type: "photo" | "note" | "place" | "tape" | "stamp" | "ticket" | "sticker";
   x: number; y: number; w: number; rot: number; z: number;
   photoId?: string; caption?: string;
   text?: string; style?: string; font?: string;
+  sub?: string; h?: string; icon?: string;
 };
 export type JournalPageData = { quote: string; items: JournalItem[] };
 
@@ -54,7 +56,7 @@ export function sanitizePage(input: unknown, ownedPhotos: Set<string>): JournalP
     const item: JournalItem = {
       id, type,
       x: num(it.x, -10, 100, 10), y: num(it.y, -10, 100, 10),
-      w: num(it.w, 6, 95, type === "tape" ? 28 : 40),
+      w: num(it.w, 6, 95, type === "tape" ? 28 : type === "stamp" ? 26 : type === "sticker" ? 14 : type === "ticket" ? 46 : 40),
       rot: num(it.rot, -45, 45, 0),
       z: Math.round(num(it.z, 0, 999, items.length + 1)),
     };
@@ -70,6 +72,17 @@ export function sanitizePage(input: unknown, ownedPhotos: Set<string>): JournalP
     } else if (type === "place") {
       item.text = str(it.text, 80);
       if (!item.text) continue;
+    } else if (type === "stamp") {
+      // a copy of the stamp of a country (the image is the country's own, read from the theme)
+      if (!isValidCountryHandle(it.h)) continue;
+      item.h = it.h;
+    } else if (type === "ticket") {
+      item.text = str(it.text, 60);
+      item.sub = str(it.sub, 60);
+    } else if (type === "sticker") {
+      const icon = STICKERS.find((s) => s === it.icon);
+      if (!icon) continue;
+      item.icon = icon;
     }
     items.push(item);
   }
