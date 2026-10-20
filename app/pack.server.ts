@@ -62,7 +62,7 @@ export function parsePackPrefs(stored: string | null | undefined): PackPrefs | n
 
 // Categories the Club list uses for items a member types in by hand. Rows in any other category are the old starter checklist
 // (documents, clothing...) from before the member was Club: they stay visible but do not count toward the list.
-export const PACK_CATEGORIES = ["docs", "prep", "clothes", "shoes", "care", "tech", "health", "act", "carry"] as const;
+export const PACK_CATEGORIES = ["docs", "prep", "clothes", "shoes", "care", "tech", "health", "pet", "act", "carry"] as const;
 
 // A smart item key looks like "tee", "act:beach:0" or "f:documents:2" (Free template); keep it tame.
 export const PACK_KEY = /^[a-z0-9][a-z0-9:._-]{0,59}$/;
