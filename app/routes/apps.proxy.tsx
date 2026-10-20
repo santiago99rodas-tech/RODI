@@ -1090,7 +1090,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         if (err instanceof AccountFailure && err.code === "INVALID") return Response.json({ error: "INVALID", field: err.detail ?? null }, { status: 400 });
         if (err instanceof AccountFailure && err.code === "LIMIT") return Response.json({ error: "ADDRESS_LIMIT" }, { status: 400 });
         console.error(`${op} failed`, err);
-        return Response.json({ error: err instanceof AccountFailure && err.detail ? "SHOPIFY_REJECTED" : "ACCOUNT_UNAVAILABLE", detail: err instanceof AccountFailure ? err.detail ?? null : null }, { status: 502 });
+        return Response.json({ error: err instanceof AccountFailure && err.detail ? "SHOPIFY_REJECTED" : "ACCOUNT_UNAVAILABLE", detail: err instanceof AccountFailure ? err.detail ?? null : null }, { status: err instanceof AccountFailure && err.detail ? 422 : 502 });
       }
     }
 
