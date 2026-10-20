@@ -87,10 +87,12 @@ export default function EmailSettings() {
           <s-text>Remitente: {from || "falta (EMAIL_FROM)"}</s-text>
           <s-text>Responder a: {replyTo}</s-text>
           <s-text>Idioma por defecto: {defaultLocale}</s-text>
-          <s-paragraph>
-            Define RESEND_API_KEY y EMAIL_FROM (por ejemplo &ldquo;RODI Club &lt;club@rodiclub.com&gt;&rdquo;) como
-            variables de entorno en EasyPanel y vuelve a desplegar. Primero hay que verificar el dominio en Resend.
-          </s-paragraph>
+          {!configured && (
+            <s-paragraph>
+              Define RESEND_API_KEY y EMAIL_FROM (por ejemplo &ldquo;RODI Club &lt;club@rodiclub.com&gt;&rdquo;) como
+              variables de entorno en EasyPanel y vuelve a desplegar. Primero hay que verificar el dominio en Resend.
+            </s-paragraph>
+          )}
         </s-stack>
       </s-section>
 
