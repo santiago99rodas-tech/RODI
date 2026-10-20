@@ -1675,6 +1675,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       // No membership.isClub check — RODI Services is open to any
       // signed-in customer, Free or Club, same as the original spec's
       // "one-time paid add-on" framing (not a membership perk).
+      // RODI Services are switched off until the owner says so: set SERVICES_ENABLED=true (and services_on in the theme) to open them.
+      if (process.env.SERVICES_ENABLED !== "true") return Response.json({ error: "SERVICES_OFF" }, { status: 403 });
       const serviceType = String(body.serviceType ?? "").trim();
       if (!serviceType) return Response.json({ error: "serviceType is required" }, { status: 400 });
       if (body.tripId) await assertTripOwnership(body.tripId, shop, customerId);
