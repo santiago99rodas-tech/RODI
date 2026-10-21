@@ -31,6 +31,7 @@ export default function App() {
         <s-link href="/app/backups">Respaldos</s-link>
         <s-link href="/app/calculator-usage">Uso calculadora</s-link>
         <s-link href="/app/data-requests">Datos personales</s-link>
+        <s-link href="/app/reset-test-accounts">Reiniciar cuentas de prueba</s-link>
       </s-app-nav>
       <Outlet />
     </AppProvider>
