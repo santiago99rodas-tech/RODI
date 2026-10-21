@@ -9,6 +9,7 @@ import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { saveReport } from "../place-report.server";
 import { estimateJourney } from "../journey.server";
+import { aiAllowance, aiItineraryEnabled, aiLeft, aiRefund, aiRegister, planWithAi, sanitizeAiRequest } from "../ai-itinerary.server";
 import { claimReferral, qualifyReferral, referralSummary } from "../referral.server";
 import { JournalFailure, addPhoto, getPhoto, pruneUnusedPhotos, readBook, saveCover, savePage } from "../journal-book.server";
 import { resolveMembership } from "../membership.server";
@@ -417,6 +418,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     return Response.json({ score, buckets, recommendations });
   }
 
+  // Can this member personalize a route with the AI step? (Club only, and only when the shop turned it on.)
+  if (searchParams.get("aiItinerary") !== null) {
+    const membership = await resolveMembership(session.shop, customerId);
+    const enabled = aiItineraryEnabled() && membership.isClub;
+    return Response.json({ enabled, left: enabled ? aiLeft(customerId) : 0 });
+  }
+
   // Approximate duration of a journey between two cities (straight-line distance, per mode). Open to any signed-in member, Free or Club.
   if (searchParams.get("journeyEstimate") !== null) {
     if (!allowSearch(customerId)) return Response.json({ error: "RATE_LIMIT" }, { status: 429 });
@@ -645,6 +653,22 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     // Plan-a-trip assistant: the days of a trip and the activities suggested for each one, in a single request.
     // Suggested activities are free of the Free-plan activity limit (the member only pays that limit with what they add themselves).
+    case "aiItinerary": {
+      if (!membership.isClub) return Response.json({ error: "CLUB_ONLY", feature: "ai_itinerary" }, { status: 403 });
+      if (!aiItineraryEnabled()) return Response.json({ error: "AI_OFF" }, { status: 403 });
+      const aiReq = sanitizeAiRequest(body);
+      if (!aiReq) return Response.json({ error: "BAD_REQUEST" }, { status: 400 });
+      const allow = aiAllowance(customerId);
+      if (!allow.ok) return Response.json({ error: allow.reason }, { status: 429 });
+      aiRegister(customerId);
+      try {
+        return Response.json({ ok: true, plan: await planWithAi(aiReq), left: aiLeft(customerId) });
+      } catch {
+        aiRefund(customerId); // a failed call does not use up the member's daily allowance
+        return Response.json({ error: "AI_UNAVAILABLE" }, { status: 502 });
+      }
+    }
+
     case "createTripPlan": {
       await assertTripOwnership(body.tripId, shop, customerId);
       const planDays = Array.isArray(body.days) ? body.days.slice(0, 60) : [];
