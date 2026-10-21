@@ -9,6 +9,7 @@ import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { saveReport } from "../place-report.server";
 import { estimateJourney } from "../journey.server";
+import { STAY_TIME, isCuratedTitle, isStayEntry, suggestedMarkOk } from "../curated-titles.server";
 import { aiAllowance, aiItineraryEnabled, aiLeft, aiRefund, aiRegister, planWithAi, sanitizeAiRequest } from "../ai-itinerary.server";
 import { claimReferral, qualifyReferral, referralSummary } from "../referral.server";
 import { JournalFailure, addPhoto, getPhoto, pruneUnusedPhotos, readBook, saveCover, savePage } from "../journal-book.server";
@@ -680,6 +681,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       let room = membership.isClub
         ? Infinity
         : (existing + planDays.length) * FREE_SUGGESTED_PER_DAY + FREE_SUGGESTED_SLACK - (await db.activity.count({ where: { day: { tripId: body.tripId }, suggested: true } }));
+      // Free: only entries RODI could have written keep the "suggested" mark; any other entry counts as the member's own and fits in what is left of the limit
+      let ownRoom = membership.isClub
+        ? Infinity
+        : FREE_TIMELINE_ACTIVITY_LIMIT - (await db.activity.count({ where: { day: { tripId: body.tripId }, suggested: false } }));
       let activities = 0;
       for (let i = 0; i < planDays.length; i++) {
         const d = planDays[i] || {};
@@ -691,8 +696,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         for (let k = 0; k < items.length; k++) {
           const it = items[k] || {};
           if (!it.title) continue;
-          if (room <= 0) break;
-          room--;
+          let mark = true;
+          if (!membership.isClub && !suggestedMarkOk(it)) {
+            console.warn("[suggested-mark] plan item without the mark:", String(it.title).slice(0, 80));
+            if (ownRoom <= 0) continue;
+            ownRoom--; mark = false;
+          } else {
+            if (room <= 0) break;
+            room--;
+          }
           await db.activity.create({
             data: {
               dayId: day.id,
@@ -701,7 +713,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
               category: it.category ? String(it.category).slice(0, 30) : null,
               location: it.location ? String(it.location).slice(0, 140) : null,
               note: it.note ? String(it.note).slice(0, 300) : null,
-              suggested: true,
+              suggested: mark,
               sortOrder: k,
             },
           });
@@ -740,7 +752,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       if (!day || day.trip.shop !== shop || day.trip.customerId !== customerId) {
         return Response.json({ error: "Not found" }, { status: 404 });
       }
-      const suggestedByRodi = body.suggested === true;
+      let suggestedByRodi = body.suggested === true;
+      if (!membership.isClub && suggestedByRodi) {
+        // the mark is kept only for what RODI could have written (see curated-titles.server.ts); the hotel of a night is the one typed entry, one per day
+        let ok = suggestedMarkOk(body);
+        if (ok && isStayEntry(body) && !isCuratedTitle(body.title)) {
+          ok = (await db.activity.count({ where: { dayId: body.dayId, suggested: true, category: "alojamiento", time: STAY_TIME } })) === 0;
+        }
+        if (!ok) { console.warn("[suggested-mark] createActivity without the mark:", String(body.title ?? "").slice(0, 80)); suggestedByRodi = false; }
+      }
       if (!membership.isClub && suggestedByRodi) {
         const [dayCount, suggestedCount] = await Promise.all([
           db.day.count({ where: { tripId: day.tripId } }),
@@ -784,9 +804,23 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       if (!activity || activity.day.trip.shop !== shop || activity.day.trip.customerId !== customerId) {
         return Response.json({ error: "Not found" }, { status: 404 });
       }
+      // Free: renaming a suggested activity into text RODI would not have written turns it into the member's own entry (it then counts in the limit)
+      let unmark = false;
+      if (!membership.isClub && activity.suggested) {
+        const after = { title: body.title ?? activity.title, category: body.category ?? activity.category, time: body.time ?? activity.time };
+        // only when the title or the "hotel of the night" status changes: moving or annotating an older suggestion must not unmark it
+        const changed = (body.title !== undefined && body.title !== activity.title) || isStayEntry(after) !== isStayEntry(activity);
+        if (changed && !suggestedMarkOk(after)) {
+          const own = await db.activity.count({ where: { day: { tripId: activity.day.tripId }, suggested: false } });
+          if (own >= FREE_TIMELINE_ACTIVITY_LIMIT) return Response.json({ error: "FREE_TIMELINE_LIMIT", limit: FREE_TIMELINE_ACTIVITY_LIMIT }, { status: 403 });
+          console.warn("[suggested-mark] updateActivity unmarked:", String(after.title ?? "").slice(0, 80));
+          unmark = true;
+        }
+      }
       const updated = await db.activity.update({
         where: { id: body.activityId },
         data: {
+          ...(unmark ? { suggested: false } : {}),
           ...(body.time !== undefined ? { time: body.time } : {}),
           ...(body.title !== undefined ? { title: body.title } : {}),
           ...(body.category !== undefined ? { category: body.category } : {}),
