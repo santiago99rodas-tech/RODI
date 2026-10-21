@@ -15,6 +15,8 @@ export const WIZARD_PACE = ["relaxed", "balanced", "busy"] as const;
 export const WIZARD_PET_KINDS = ["dog", "cat", "other"] as const;
 export const WIZARD_PET_SIZES = ["s", "m", "l"] as const;
 export const WIZARD_ROUTES = ["ess", "likes", "slow", "off"] as const;
+// the budget the member chose before the suggested routes were made (per person per day, flights not included): low / mid / comfort / lux
+export const WIZARD_BUDGETS = ["low", "mid", "comfort", "lux"] as const;
 
 export type WizardLeg = { c: string; h: string; n: string; d: number };
 export type WizardPlan = { mode: "have" | "suggest"; route?: string; legs?: WizardLeg[] };
@@ -23,7 +25,7 @@ export type WizardPlan = { mode: "have" | "suggest"; route?: string; legs?: Wiza
 // activities the member marked as favourites (♥) or swapped out, so they follow the account and not just one browser.
 export type TripWizard = {
   who: (typeof WIZARD_WHO)[number] | null; people: number; likes: string[]; countries: string[]; plan: WizardPlan | null;
-  origin: string; ret: string; trav: boolean; pace: string; pets: { kind: string; size: string } | null; keep: string[]; skip: string[];
+  origin: string; ret: string; trav: boolean; pace: string; budget: string; pets: { kind: string; size: string } | null; keep: string[]; skip: string[];
   // how the way there and the way back are travelled (mode, dates and times, stops); see journey.server.ts
   jr: { out: Journey | null; back: Journey | null } | null;
 };
@@ -61,6 +63,7 @@ export function sanitizeWizard(raw: unknown): TripWizard | null {
   const people = who === "solo" ? 1 : Number.isFinite(n) ? Math.min(20, Math.max(who ? 2 : 1, n)) : who ? 2 : 1;
   const origin = clean(r.origin, 80), ret = clean(r.ret, 80), trav = r.trav === true;
   const pace = (WIZARD_PACE as readonly string[]).includes(r.pace as string) ? (r.pace as string) : "";
+  const budget = (WIZARD_BUDGETS as readonly string[]).includes(r.budget as string) ? (r.budget as string) : "";
   const pr = (r.pets && typeof r.pets === "object" ? r.pets : null) as Record<string, unknown> | null;
   const pets = pr && (WIZARD_PET_KINDS as readonly string[]).includes(pr.kind as string)
     ? { kind: pr.kind as string, size: (WIZARD_PET_SIZES as readonly string[]).includes(pr.size as string) ? (pr.size as string) : "m" }
@@ -70,6 +73,6 @@ export function sanitizeWizard(raw: unknown): TripWizard | null {
   const jrRaw = (r.jr && typeof r.jr === "object" ? r.jr : null) as Record<string, unknown> | null;
   const jrOut = jrRaw ? sanitizeJourney(jrRaw.out) : null, jrBack = jrRaw ? sanitizeJourney(jrRaw.back) : null;
   const jr = jrOut || jrBack ? { out: jrOut, back: jrBack } : null;
-  if (!who && !likes.length && !countries.length && !plan && !origin && !pace && !pets && !keep.length && !skip.length && !jr) return null;
-  return { who, people, likes, countries, plan, origin, ret, trav, pace, pets, keep, skip, jr };
+  if (!who && !likes.length && !countries.length && !plan && !origin && !pace && !budget && !pets && !keep.length && !skip.length && !jr) return null;
+  return { who, people, likes, countries, plan, origin, ret, trav, pace, budget, pets, keep, skip, jr };
 }
