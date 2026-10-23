@@ -456,6 +456,21 @@ model CommunityReply {
   @@index([customerId])
 }
 
+// Community: block another member (App Store guideline 1.2). The blocker no longer sees the blocked member's posts or
+// replies; the blocked member is not told. blockedName is a snapshot used only for the blocker's "blocked members" list.
+model CommunityBlock {
+  id          String   @id @default(cuid())
+  shop        String
+  blockerId   String
+  blockedId   String
+  blockedName String   @default("")
+  createdAt   DateTime @default(now())
+
+  @@unique([shop, blockerId, blockedId])
+  @@index([shop, blockerId])
+  @@index([shop, blockedId])
+}
+
 model CommunityLike {
   id         String   @id @default(cuid())
   shop       String

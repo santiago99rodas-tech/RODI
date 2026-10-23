@@ -49,7 +49,7 @@ async function readManagedMetafields(admin: AdminApiContext, customerId: string)
 export async function buildCustomerExport(shop: string, customerId: string, opts: { admin?: AdminApiContext | null; includeInternal?: boolean } = {}) {
   const who = { shop, customerId };
   const [
-    trips, documents, emergencyContacts, journalEntries, journalPages, journalCovers, placeReports, referralCodes, referralsAsReferrer, referralsAsFriend, journalPhotoRows, communityPosts, communityReplies, communityLikes,
+    trips, documents, emergencyContacts, journalEntries, journalPages, journalCovers, placeReports, referralCodes, referralsAsReferrer, referralsAsFriend, journalPhotoRows, communityPosts, communityReplies, communityLikes, communityBlocks,
     legacyQuestions, legacyAnswers, legacyRecommendations, calculatorPlans, countrySaves, countryTravel,
     serviceInquiries, memberships, emailLogs, campaignRecipients, abandonedCarts, legalAcceptances, guardianConsents, dataRequests,
   ] = await Promise.all([
@@ -78,6 +78,7 @@ export async function buildCustomerExport(shop: string, customerId: string, opts
     db.communityPost.findMany({ where: who }),
     db.communityReply.findMany({ where: who }),
     db.communityLike.findMany({ where: who }),
+    db.communityBlock.findMany({ where: { shop, blockerId: customerId } }),
     db.communityQuestion.findMany({ where: who }),
     db.communityAnswer.findMany({ where: who }),
     db.communityRecommendation.findMany({ where: who }),
@@ -135,6 +136,7 @@ export async function buildCustomerExport(shop: string, customerId: string, opts
       posts: communityPosts,
       replies: communityReplies,
       likesAndReports: communityLikes,
+      blockedMembers: communityBlocks.map((b) => ({ name: b.blockedName, blockedAt: b.createdAt })),
       legacyQuestions,
       legacyAnswers,
       legacyRecommendations,
@@ -202,6 +204,7 @@ export async function deleteCustomerRows(shop: string, customerId: string) {
     }
 
     await tx.communityLike.deleteMany({ where: who });
+    await tx.communityBlock.deleteMany({ where: { shop, OR: [{ blockerId: customerId }, { blockedId: customerId }] } });
     if (goneTargets.length) await tx.communityLike.deleteMany({ where: { targetId: { in: goneTargets } } });
     await tx.communityReply.deleteMany({ where: who });
     await tx.communityPost.deleteMany({ where: who }); // replies by others under these posts go with them (cascade)

@@ -107,6 +107,43 @@ export async function authorStats(shop: string, customerIds: string[]): Promise<
 
 type Viewer = string | null;
 
+/** Customer ids the viewer has blocked (their posts and replies are hidden from the viewer). */
+export async function blockedIds(shop: string, viewer: Viewer): Promise<string[]> {
+  if (!viewer) return [];
+  return (await db.communityBlock.findMany({ where: { shop, blockerId: viewer }, select: { blockedId: true } })).map((b) => b.blockedId);
+}
+
+/** Blocks the author of a post or reply (never yourself). The blocked member is not notified. */
+export async function blockAuthor(shop: string, blockerId: string, targetType: string, targetId: string) {
+  if (targetType !== "post" && targetType !== "reply") throw new CommunityFailure("BAD_TARGET");
+  const target: any = targetType === "post"
+    ? await db.communityPost.findFirst({ where: { id: targetId, shop }, select: { customerId: true, authorName: true } })
+    : await db.communityReply.findFirst({ where: { id: targetId, shop }, select: { customerId: true, authorName: true } });
+  if (!target) throw new CommunityFailure("NOT_FOUND", 404);
+  if (target.customerId === blockerId) throw new CommunityFailure("SELF_BLOCK", 400);
+  const name = cleanAuthor(target.authorName);
+  await db.communityBlock.upsert({
+    where: { shop_blockerId_blockedId: { shop, blockerId, blockedId: target.customerId } },
+    create: { shop, blockerId, blockedId: target.customerId, blockedName: name },
+    update: { blockedName: name },
+  });
+  return { blocked: true, name };
+}
+
+/** Lifts a block by the id of the block row (the other member's customer id is never exposed). */
+export async function unblock(shop: string, blockerId: string, blockId: string) {
+  const r = await db.communityBlock.deleteMany({ where: { id: blockId, shop, blockerId } });
+  if (!r.count) throw new CommunityFailure("NOT_FOUND", 404);
+  return { unblocked: true };
+}
+
+/** The members the viewer has blocked, for the "blocked members" list (names only). */
+export async function listBlocked(shop: string, viewer: Viewer) {
+  if (!viewer) return { blocked: [] as { id: string; name: string }[] };
+  const rows = await db.communityBlock.findMany({ where: { shop, blockerId: viewer }, orderBy: { createdAt: "desc" }, take: 200 });
+  return { blocked: rows.map((b) => ({ id: b.id, name: b.blockedName || "RODI" })) };
+}
+
 function shapePost(p: any, stats: Map<string, AuthorStat>, liked: Set<string>, viewer: Viewer) {
   const st = stats.get(p.customerId);
   return {
@@ -130,6 +167,10 @@ export async function feed(shop: string, viewer: Viewer, query: FeedQuery) {
   if (country) where.country = country;
   if (query.topic && (TOPICS as readonly string[]).includes(query.topic)) where.topic = query.topic;
   if (query.mine && viewer) where.customerId = viewer;
+  else {
+    const hidden = await blockedIds(shop, viewer);
+    if (hidden.length) where.customerId = { notIn: hidden };
+  }
   const and: any[] = [];
   const { words, tags } = parseQuery(query.q);
   for (const t of [...tags, ...normalizeTags(query.tag)]) and.push({ tags: { contains: `"${t}"` } });
@@ -155,7 +196,12 @@ export async function feed(shop: string, viewer: Viewer, query: FeedQuery) {
 export async function thread(shop: string, viewer: Viewer, id: string) {
   const post = await db.communityPost.findFirst({ where: { id, shop, status: "published" } });
   if (!post) return null;
-  const replies = await db.communityReply.findMany({ where: { postId: id, shop, status: "published" }, orderBy: { createdAt: "asc" }, take: 30 });
+  const hidden = await blockedIds(shop, viewer);
+  if (hidden.includes(post.customerId)) return null;
+  const replies = await db.communityReply.findMany({
+    where: { postId: id, shop, status: "published", ...(hidden.length ? { customerId: { notIn: hidden } } : {}) },
+    orderBy: { createdAt: "asc" }, take: 30,
+  });
   const stats = await authorStats(shop, [post.customerId, ...replies.map((r) => r.customerId)]);
   const likedPosts = new Set<string>(), likedReplies = new Set<string>();
   if (viewer) {

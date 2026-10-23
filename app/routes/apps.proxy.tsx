@@ -3,6 +3,7 @@ import { cleanEmail, cleanPhone, cleanSplitWith } from "../split.server";
 import {
   CommunityFailure, acceptReply as acceptCommunityReply, createPost as createCommunityPost, createReply as createCommunityReply, feed as communityFeed,
   meta as communityMeta, removeOwn as removeOwnCommunity, report as reportCommunity, thread as communityThread, toggleLike as toggleCommunityLike,
+  blockAuthor as blockCommunityAuthor, unblock as unblockCommunity, listBlocked as listCommunityBlocked,
 } from "../community.server";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
@@ -38,7 +39,7 @@ import { buildCustomerExport, deleteAccountAsMember, exportFilename } from "../p
 // Legal gate (see app/legal.server.ts). While a member is restricted (documents not accepted for the current versions,
 // under 15, or a 15-17 member without an approved guardian) every write is refused except these, which they need to get
 // out of that state or to exercise their privacy rights.
-const LEGAL_EXEMPT_OPS = new Set(["legalAccept", "guardianResend", "accountExport", "accountDelete", "updateAccount"]);
+const LEGAL_EXEMPT_OPS = new Set(["legalAccept", "guardianResend", "accountExport", "accountDelete", "updateAccount", "communityBlock", "communityUnblock"]);
 // Minors (even with guardian approval) can read the community but not publish in it.
 const MINOR_READ_ONLY_OPS = new Set([
   "communityPostCreate", "communityReplyCreate", "createCommunityQuestion", "createCommunityAnswer", "createCommunityRecommendation",
@@ -189,11 +190,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   // branch below, these don't require logged_in_customer_id. Only
   // status:"published" rows are ever returned here; flagged/removed stay
   // invisible to this public branch regardless of who's asking.
-  if (searchParams.get("community") === "feed" || searchParams.get("community") === "meta" || searchParams.get("community") === "thread") {
+  if (searchParams.get("community") === "feed" || searchParams.get("community") === "meta" || searchParams.get("community") === "thread" || searchParams.get("community") === "blocked") {
     try {
       const viewer = getCustomerId(request);
       const what = searchParams.get("community");
       if (what === "meta") return Response.json(await communityMeta(session.shop));
+      if (what === "blocked") return Response.json(await listCommunityBlocked(session.shop, viewer));
       if (what === "thread") {
         const t = await communityThread(session.shop, viewer, String(searchParams.get("id") ?? ""));
         return t ? Response.json(t) : Response.json({ error: "NOT_FOUND" }, { status: 404 });
@@ -1718,6 +1720,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         },
       });
       return Response.json({ recommendation });
+    }
+
+    // Blocking is a safety tool (App Store guideline 1.2): open to every signed-in member, Free or Club, even a restricted one.
+    case "communityBlock":
+    case "communityUnblock": {
+      try {
+        if (op === "communityBlock") return Response.json(await blockCommunityAuthor(shop, customerId, String(body.targetType), String(body.targetId)));
+        return Response.json(await unblockCommunity(shop, customerId, String(body.blockId)));
+      } catch (err) {
+        if (err instanceof CommunityFailure) return Response.json({ error: err.code }, { status: err.status });
+        console.error(`${op} failed`, err);
+        return Response.json({ error: "COMMUNITY_UNAVAILABLE" }, { status: 502 });
+      }
     }
 
     // Live check while a member types (word lists only, no AI call per keystroke); publishing runs the full check.
