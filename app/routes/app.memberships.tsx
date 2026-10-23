@@ -19,6 +19,7 @@ type CustomerRowData = {
   name: string | null;
   status: string;
   isClub: boolean;
+  plan: string;
   accessUntil: string | null;
   source: string | null;
 };
@@ -35,6 +36,7 @@ async function describeCustomers(admin: any, shop: string, nodes: { id: string; 
       name: node.displayName,
       status: membership.status,
       isClub: membership.isClub,
+      plan: membership.plan,
       accessUntil: membership.accessUntil ? membership.accessUntil.toISOString() : null,
       source: row?.promoSource ?? null,
     });
@@ -82,6 +84,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 const GRANT_MONTHS = [1, 3, 12];
+const PLAN_LABEL: Record<string, string> = { free: "Free", club: "Club", founder: "Fundador" };
 const STATUS_LABEL: Record<string, string> = {
   FREE: "Free", PROMOTIONAL_ACCESS: "Acceso de cortesía", ACTIVE: "Activa", PAST_DUE: "Pago vencido", CANCELLED: "Cancelada", EXPIRED: "Vencida",
 };
@@ -119,6 +122,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       if (result.outcome === "sent") return { ok: `Correo de bienvenida enviado a ${email}` };
       return { error: `No se envió el correo de bienvenida: ${result.detail ?? result.outcome}` };
     }
+    if (intent === "founder" || intent === "unfounder") {
+      const value = intent === "founder";
+      await applyManualMembership(admin, shop, customerId, { kind: "founder", value });
+      return { ok: value ? "Marcado como Fundador" : "Ya no es Fundador" };
+    }
     if (intent === "expire") {
       await applyManualMembership(admin, shop, customerId, { kind: "expire" });
       return { ok: "El acceso Club venció" };
@@ -147,7 +155,7 @@ function CustomerRow({ customer, fetcher }: { customer: CustomerRowData; fetcher
           {customer.name ? `${customer.name} · ` : ""}ID {customer.id}
         </s-text>
         <s-text>
-          {customer.isClub ? "Club" : "Free"} — {STATUS_LABEL[customer.status] ?? customer.status}
+          {PLAN_LABEL[customer.plan] ?? "Free"} — {STATUS_LABEL[customer.status] ?? customer.status}
           {customer.accessUntil ? ` · hasta ${new Date(customer.accessUntil).toLocaleString("es-CO")}` : ""}
           {customer.source ? ` · origen: ${customer.source}` : ""}
         </s-text>
@@ -166,6 +174,9 @@ function CustomerRow({ customer, fetcher }: { customer: CustomerRowData; fetcher
             }}
           >
             Enviar correo de bienvenida
+          </s-button>
+          <s-button disabled={busy || !customer.isClub} onClick={() => submit(customer.plan === "founder" ? "unfounder" : "founder")}>
+            {customer.plan === "founder" ? "Quitar Fundador" : "Marcar Fundador"}
           </s-button>
           <s-button
             tone="critical"

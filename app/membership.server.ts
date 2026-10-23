@@ -13,9 +13,14 @@ import db from "./db.server";
 // already reads custom.travel_log for the Passport. See
 // projectMembershipToMetafield() below for the write side.
 
+// The three plan profiles. What each one includes is decided separately; today "club" and "founder" unlock the same things
+// (every limit reads isClub), and "founder" only adds the badge and the locked price.
+export type PlanProfile = "free" | "club" | "founder";
+
 export type EffectiveMembership = {
   status: "FREE" | "PROMOTIONAL_ACCESS" | "ACTIVE" | "PAST_DUE" | "CANCELLED" | "EXPIRED";
   isClub: boolean;
+  plan: PlanProfile;
   accessUntil: Date | null;
 };
 
@@ -47,24 +52,26 @@ function addMonths(date: Date, months: number): Date {
 // distinct access level, it still resolves to isClub: false).
 export async function resolveMembership(shop: string, customerId: string): Promise<EffectiveMembership> {
   const row = await db.membership.findUnique({ where: { shop_customerId: { shop, customerId } } });
-  if (!row) return { status: "FREE", isClub: false, accessUntil: null };
+  if (!row) return { status: "FREE", isClub: false, plan: "free", accessUntil: null };
 
   const now = new Date();
 
+  const clubPlan: PlanProfile = row.founder ? "founder" : "club";
+
   if (row.status === "ACTIVE" && row.currentPeriodEnd && row.currentPeriodEnd > now) {
-    return { status: "ACTIVE", isClub: true, accessUntil: row.currentPeriodEnd };
+    return { status: "ACTIVE", isClub: true, plan: clubPlan, accessUntil: row.currentPeriodEnd };
   }
 
   if (row.promoEnd && row.promoEnd > now) {
-    return { status: "PROMOTIONAL_ACCESS", isClub: true, accessUntil: row.promoEnd };
+    return { status: "PROMOTIONAL_ACCESS", isClub: true, plan: clubPlan, accessUntil: row.promoEnd };
   }
 
   const lapsedUntil = row.currentPeriodEnd ?? row.promoEnd;
   if (lapsedUntil) {
-    return { status: "EXPIRED", isClub: false, accessUntil: lapsedUntil };
+    return { status: "EXPIRED", isClub: false, plan: "free", accessUntil: lapsedUntil };
   }
 
-  return { status: "FREE", isClub: false, accessUntil: null };
+  return { status: "FREE", isClub: false, plan: "free", accessUntil: null };
 }
 
 // Grants (or re-grants) the launch promo. Idempotent: upserts on the
@@ -173,6 +180,7 @@ export async function projectMembershipToMetafield(
 
 export type ManualMembershipAction =
   | { kind: "grant"; months: number }
+  | { kind: "founder"; value: boolean }
   | { kind: "expire" }
   | { kind: "free" };
 
@@ -194,6 +202,11 @@ export async function applyManualMembership(
       cancelledAt: null,
     };
     await db.membership.upsert({ where: key, create: { shop, customerId, ...data }, update: data });
+  } else if (action.kind === "founder") {
+    // Only the profile flag changes; dates and the projected metafield stay as they are.
+    const data = { founder: action.value, founderSince: action.value ? now : null };
+    await db.membership.upsert({ where: key, create: { shop, customerId, ...data }, update: data });
+    return;
   } else if (action.kind === "expire") {
     const past = new Date(now.getTime() - 60 * 1000);
     const existing = await db.membership.findUnique({ where: key });

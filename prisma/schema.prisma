@@ -234,6 +234,8 @@ model Membership {
   subscriptionId   String?   // reserved for Fase 2 (Shopify subscription/contract id)
   currentPeriodEnd DateTime? // reserved for Fase 2
   cancelledAt      DateTime?
+  founder          Boolean   @default(false) // "Fundador" profile: launch founders (badge, locked price); only counts while Club is active
+  founderSince     DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
