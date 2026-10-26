@@ -33,6 +33,11 @@ api_version = "2026-10"
   uri = "/webhooks/customers/update"
   topics = [ "customers/update" ]
 
+  # Prepaid Club passes (SKU CLUB-PASS-<n>M): a paid order adds the months to the buyer's Club access.
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/orders/paid"
+  topics = [ "orders/paid" ]
+
   # Mandatory privacy compliance webhooks (GDPR / data protection)
   [[webhooks.subscriptions]]
   uri = "/webhooks/customers/data_request"

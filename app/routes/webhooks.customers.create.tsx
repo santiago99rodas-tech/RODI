@@ -2,6 +2,7 @@ import type { ActionFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import { grantPromotionalAccess, projectMembershipToMetafield } from "../membership.server";
 import { sendAccountReadyEmail } from "../emails.server";
+import { redeemPendingPasses } from "../club-pass.server";
 
 // Grants the launch promo (RODI Club Fase 1) to every new signup and
 // projects it to the customer metafield the theme reads. Not run for
@@ -27,6 +28,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   // "Your account is ready" email (Resend). Deduplicated per customer and never throws, so a webhook retry cannot
   // send it twice or fail the delivery.
   await sendAccountReadyEmail(admin, shop, customerId, payload);
+
+  // A prepaid pass bought as a guest with this same email is applied now that the account exists. Never fails the delivery.
+  try {
+    await redeemPendingPasses(admin, shop, customerId, payload.email);
+  } catch (err) {
+    console.error("[club-pass] pending passes for a new account failed", err);
+  }
 
   return new Response();
 };

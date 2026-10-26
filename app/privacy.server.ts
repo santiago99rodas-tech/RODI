@@ -49,7 +49,7 @@ async function readManagedMetafields(admin: AdminApiContext, customerId: string)
 export async function buildCustomerExport(shop: string, customerId: string, opts: { admin?: AdminApiContext | null; includeInternal?: boolean } = {}) {
   const who = { shop, customerId };
   const [
-    trips, documents, emergencyContacts, journalEntries, journalPages, journalCovers, placeReports, referralCodes, referralsAsReferrer, referralsAsFriend, journalPhotoRows, communityPosts, communityReplies, communityLikes, communityBlocks,
+    trips, documents, emergencyContacts, journalEntries, journalPages, journalCovers, placeReports, referralCodes, referralsAsReferrer, referralsAsFriend, journalPhotoRows, communityPosts, communityReplies, communityLikes, communityBlocks, clubPassGrants,
     legacyQuestions, legacyAnswers, legacyRecommendations, calculatorPlans, countrySaves, countryTravel,
     serviceInquiries, memberships, emailLogs, campaignRecipients, abandonedCarts, legalAcceptances, guardianConsents, dataRequests,
   ] = await Promise.all([
@@ -79,6 +79,7 @@ export async function buildCustomerExport(shop: string, customerId: string, opts
     db.communityReply.findMany({ where: who }),
     db.communityLike.findMany({ where: who }),
     db.communityBlock.findMany({ where: { shop, blockerId: customerId } }),
+    db.clubPassGrant.findMany({ where: who }),
     db.communityQuestion.findMany({ where: who }),
     db.communityAnswer.findMany({ where: who }),
     db.communityRecommendation.findMany({ where: who }),
@@ -137,6 +138,7 @@ export async function buildCustomerExport(shop: string, customerId: string, opts
       replies: communityReplies,
       likesAndReports: communityLikes,
       blockedMembers: communityBlocks.map((b) => ({ name: b.blockedName, blockedAt: b.createdAt })),
+      clubPasses: clubPassGrants.map((g) => ({ months: g.months, status: g.status, boughtAt: g.createdAt, appliedAt: g.grantedAt })),
       legacyQuestions,
       legacyAnswers,
       legacyRecommendations,
@@ -220,6 +222,7 @@ export async function deleteCustomerRows(shop: string, customerId: string) {
     await tx.journalCover.deleteMany({ where: who });
     await tx.placeReport.deleteMany({ where: who });
     await tx.referralCode.deleteMany({ where: who });
+    await tx.clubPassGrant.deleteMany({ where: who });
     await tx.referral.deleteMany({ where: { shop, OR: [{ referrerId: customerId }, { referredId: customerId }] } });
     await tx.journalPhoto.deleteMany({ where: who });
     await tx.serviceInquiry.deleteMany({ where: who });
@@ -399,6 +402,7 @@ export async function redactShop(shop: string) {
     db.journalCover.deleteMany({ where: w }),
     db.placeReport.deleteMany({ where: w }),
     db.referralCode.deleteMany({ where: w }),
+    db.clubPassGrant.deleteMany({ where: w }),
     db.referral.deleteMany({ where: w }),
     db.journalPhoto.deleteMany({ where: w }),
     db.serviceInquiry.deleteMany({ where: w }),

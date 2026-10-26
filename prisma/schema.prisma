@@ -705,3 +705,24 @@ model DataRequest {
 
   @@index([shop, createdAt])
 }
+
+// Prepaid Club passes (products with SKU CLUB-PASS-<n>M) bought in the shop. One row per order line; PENDING while the buyer has
+// no account yet (guest checkout), GRANTING while a delivery is applying it, GRANTED once the months were added to the member.
+model ClubPassGrant {
+  id         String    @id @default(cuid())
+  shop       String
+  orderId    String
+  lineItemId String
+  sku        String
+  months     Int
+  customerId String?
+  email      String?
+  status     String    @default("PENDING") // PENDING | GRANTING | GRANTED
+  grantedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([shop, orderId, lineItemId])
+  @@index([shop, customerId])
+  @@index([shop, email, status])
+}
