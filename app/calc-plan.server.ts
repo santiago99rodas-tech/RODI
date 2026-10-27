@@ -227,6 +227,4 @@ export function budgetCategory(panelId: string): string {
 export const PANEL_LABELS: Record<string, Record<string, string>> = {
   es: { vuelos: "Vuelos y trayectos", aloj: "Alojamiento", comida: "Alimentación", trans: "Transporte interno", entr: "Entradas y atracciones", guias: "Tours y guías", comun: "Gastos comunes", compras: "Compras y souvenirs", salud: "Salud y emergencias", cont: "Imprevistos" },
   en: { vuelos: "Flights and transfers", aloj: "Lodging", comida: "Food", trans: "Local transport", entr: "Tickets and attractions", guias: "Tours and guides", comun: "Common expenses", compras: "Shopping and souvenirs", salud: "Health and emergencies", cont: "Contingency" },
-  fr: { vuelos: "Vols et trajets", aloj: "Hébergement", comida: "Repas", trans: "Transports locaux", entr: "Billets et attractions", guias: "Visites et guides", comun: "Frais communs", compras: "Achats et souvenirs", salud: "Santé et urgences", cont: "Imprévus" },
-  it: { vuelos: "Voli e tratte", aloj: "Alloggio", comida: "Pasti", trans: "Trasporti locali", entr: "Biglietti e attrazioni", guias: "Tour e guide", comun: "Spese comuni", compras: "Acquisti e souvenir", salud: "Salute ed emergenze", cont: "Imprevisti" },
 };

@@ -2,13 +2,11 @@
 // Club (trip planner, Smart Packing, Split, passport + entry requirements, Emergency Mode, Journal, community, partner
 // benefits, early access), Chapters (clothing collections built around one place), travel objects, and Services.
 // Do not add offers, prices or perks that are not live in the store.
-const LANGS = ["es", "en", "fr", "it"];
+const LANGS = ["es", "en"];
 
 const TAGLINE = {
   es: "Hecho para ir a lugares",
   en: "Made for going places",
-  fr: "Fait pour aller ailleurs",
-  it: "Fatto per andare lontano",
 };
 
 const COPY = {
@@ -38,32 +36,6 @@ const COPY = {
         ["Keep your memories", "Your Travel Journal keeps what you lived on every trip, year after year."],
       ],
       quote: "Great stories inspire great journeys.",
-    },
-    fr: {
-      subject: "Posez vos questions, recommandez et partagez avec la communauté",
-      preheader: "Votre expérience peut aider le prochain voyageur.",
-      h1: "Partagez vos expériences",
-      p: "Chaque voyage laisse une histoire. Posez vos questions, recommandez des adresses et racontez à la communauté RODI ce que vous avez appris pour aider d'autres voyageurs.",
-      cta: "Aller à la communauté",
-      cols: [
-        ["Posez une question", "Posez vos questions de voyage et recevez les réponses d'autres membres du Club."],
-        ["Recommandez une adresse", "Partagez restaurants, hébergements ou activités qui en valaient la peine."],
-        ["Gardez vos souvenirs", "Votre Journal de voyage garde ce que vous avez vécu à chaque voyage, année après année."],
-      ],
-      quote: "Les belles histoires inspirent les grands voyages.",
-    },
-    it: {
-      subject: "Chiedi, consiglia e condividi con la community",
-      preheader: "La tua esperienza può aiutare il prossimo viaggiatore.",
-      h1: "Condividi le tue esperienze",
-      p: "Ogni viaggio lascia una storia. Fai domande, consiglia luoghi e racconta alla community RODI quello che hai imparato per aiutare altri viaggiatori.",
-      cta: "Vai alla community",
-      cols: [
-        ["Fai una domanda", "Porta i tuoi dubbi di viaggio e ricevi risposte da altri membri del Club."],
-        ["Consiglia un posto", "Condividi ristoranti, alloggi o attività che ne valevano la pena."],
-        ["Conserva i tuoi ricordi", "Il tuo Diario di viaggio conserva ciò che hai vissuto in ogni viaggio, anno dopo anno."],
-      ],
-      quote: "Le belle storie ispirano grandi viaggi.",
     },
   },
 
@@ -96,34 +68,6 @@ const COPY = {
       ],
       quote: "Travel is better in good company.",
     },
-    fr: {
-      subject: "Invitez un ami à RODI Club",
-      preheader: "Votre code d'invitation, prêt à partager.",
-      h1: "Parrainez un ami",
-      p: "<strong>Partagez</strong> RODI Club avec ceux qui voyagent avec vous. Quand votre ami nous rejoint avec votre lien et crée son premier voyage, <strong>vous gagnez tous les deux 1 mois de Club</strong>.",
-      label: "Votre code d'invitation",
-      cta: "Partager mon lien",
-      cols: [
-        ["Partagez votre lien", "Envoyez-le à ceux qui voyagent avec vous."],
-        ["Votre ami planifie", "Il nous rejoint avec votre lien et crée son premier voyage."],
-        ["1 mois de Club pour chacun", "Vous recevez chacun 1 mois. Vous pouvez cumuler jusqu'à 6 mois."],
-      ],
-      quote: "Voyager est plus beau en bonne compagnie.",
-    },
-    it: {
-      subject: "Invita un amico a RODI Club",
-      preheader: "Il tuo codice d'invito, pronto da condividere.",
-      h1: "Invita un amico",
-      p: "<strong>Condividi</strong> RODI Club con chi viaggia con te. Quando il tuo amico si unisce con il tuo link e crea il suo primo viaggio, <strong>ricevete entrambi 1 mese di Club</strong>.",
-      label: "Il tuo codice d'invito",
-      cta: "Condividi il mio link",
-      cols: [
-        ["Condividi il tuo link", "Invialo a chi viaggia con te."],
-        ["Il tuo amico pianifica", "Si unisce con il tuo link e crea il suo primo viaggio."],
-        ["1 mese di Club a testa", "Ricevete 1 mese ciascuno. Tu puoi accumulare fino a 6 mesi."],
-      ],
-      quote: "Viaggiare è meglio in buona compagnia.",
-    },
   },
 
   winback: {
@@ -153,32 +97,6 @@ const COPY = {
       cta: "Back to RODI",
       quote: "Your next trip starts here.",
     },
-    fr: {
-      subject: "Votre prochain voyage vous attend chez RODI",
-      preheader: "Votre planificateur, votre passeport et les guides de destinations sont toujours là.",
-      h1: "Vous nous manquez",
-      p: "Cela fait un moment. Votre planificateur, votre passeport et les guides de destinations vous attendent pour votre prochain voyage.",
-      cols: [
-        ["Destinations et conditions", "Guides et conditions d'entrée pour votre prochaine destination."],
-        ["Avantages du Club", "Des partenaires de confiance pour l'hébergement, les activités et la connectivité."],
-        ["Votre planificateur", "Itinéraire, budget, bagages et documents au même endroit."],
-      ],
-      cta: "Revenir sur RODI",
-      quote: "Votre prochain voyage commence ici.",
-    },
-    it: {
-      subject: "Il tuo prossimo viaggio ti aspetta su RODI",
-      preheader: "Il tuo planner, il tuo passaporto e le guide delle destinazioni sono sempre qui.",
-      h1: "Ci manchi",
-      p: "È passato un po'. Il tuo planner, il tuo passaporto e le guide delle destinazioni ti aspettano per il prossimo viaggio.",
-      cols: [
-        ["Destinazioni e requisiti", "Guide e requisiti d'ingresso per la tua prossima destinazione."],
-        ["Vantaggi del Club", "Partner di fiducia per alloggi, attività e connettività."],
-        ["Il tuo planner", "Itinerario, budget, bagagli e documenti in un unico posto."],
-      ],
-      cta: "Torna su RODI",
-      quote: "Il tuo prossimo viaggio inizia qui.",
-    },
   },
 
   "limited-offer": {
@@ -207,32 +125,6 @@ const COPY = {
         ["Plan with ease", "Itinerary, budget and packing list in one place."],
       ],
       quote: "Your next trip starts here.",
-    },
-    fr: {
-      subject: "Une opportunité pour votre prochain voyage",
-      preheader: "Découvrez ce que nous avons préparé pour vous.",
-      h1: "Profitez de cette opportunité",
-      pDefault: "C'est le bon moment pour planifier votre prochain voyage avec RODI. Découvrez ce que nous avons pour vous.",
-      cta: "En savoir plus",
-      cols: [
-        ["Destinations", "Guides, conditions d'entrée et annuaire des ambassades."],
-        ["Avantages partenaires", "Des offres de partenaires de confiance comme Booking.com, GetYourGuide ou Holafly."],
-        ["Planifiez sans complications", "Itinéraire, budget et liste de bagages au même endroit."],
-      ],
-      quote: "Votre prochain voyage commence ici.",
-    },
-    it: {
-      subject: "Un'opportunità per il tuo prossimo viaggio",
-      preheader: "Scopri cosa abbiamo preparato per te.",
-      h1: "Approfitta di questa opportunità",
-      pDefault: "È un buon momento per pianificare il prossimo viaggio con RODI. Scopri cosa abbiamo per te.",
-      cta: "Scopri di più",
-      cols: [
-        ["Destinazioni", "Guide, requisiti d'ingresso ed elenco delle ambasciate."],
-        ["Vantaggi dei partner", "Offerte di partner di fiducia come Booking.com, GetYourGuide o Holafly."],
-        ["Pianifica senza complicazioni", "Itinerario, budget e lista bagagli in un unico posto."],
-      ],
-      quote: "Il tuo prossimo viaggio inizia qui.",
     },
   },
 
@@ -265,34 +157,6 @@ const COPY = {
       ],
       cta: "See benefits",
     },
-    fr: {
-      subject: "Nouveaux avantages du Club",
-      preheader: "Des partenaires de confiance et des outils utiles pour votre prochain voyage.",
-      side: "Partenaires de confiance<br>Outils utiles<br>Voyages plus simples",
-      h1: "Découvrez les nouveaux <em>avantages</em>",
-      p: "Nous réunissons au même endroit des partenaires de confiance et des services utiles pour que chaque voyage soit plus simple, plus sûr et plus mémorable.",
-      rows: [
-        ["Hébergement et activités", "Booking.com pour les hôtels et GetYourGuide pour les visites et billets."],
-        ["Connectivité", "eSIM Holafly pour plus de 200 destinations, sans changer de SIM."],
-        ["L'argent en voyage", "Plenti et ARQ pour payer, épargner et dépenser à l'étranger en plusieurs devises."],
-        ["Outils utiles", "Google Maps, Google Translate, Klook et SmartEX, recommandés pour vous déplacer."],
-      ],
-      cta: "Voir les avantages",
-    },
-    it: {
-      subject: "Nuovi vantaggi del Club",
-      preheader: "Partner di fiducia e strumenti utili per il tuo prossimo viaggio.",
-      side: "Partner di fiducia<br>Strumenti utili<br>Viaggi più semplici",
-      h1: "Scopri i nuovi <em>vantaggi</em>",
-      p: "Riuniamo in un unico posto partner di fiducia e servizi utili perché ogni viaggio sia più facile, sicuro e memorabile.",
-      rows: [
-        ["Alloggi e attività", "Booking.com per gli hotel e GetYourGuide per tour e biglietti."],
-        ["Connettività", "eSIM Holafly per oltre 200 destinazioni, senza cambiare SIM."],
-        ["Soldi in viaggio", "Plenti e ARQ per pagare, risparmiare e spendere all'estero in più valute."],
-        ["Strumenti utili", "Google Maps, Google Translate, Klook e SmartEX, consigliati per muoverti."],
-      ],
-      cta: "Vedi i vantaggi",
-    },
   },
 
   "discount-code": {
@@ -316,33 +180,11 @@ const COPY = {
       note: "Use it on your next purchase<br>and get {{ discount_label }} off.",
       cta: "Use my discount",
     },
-    fr: {
-      subject: "Une remise pour votre prochain achat",
-      preheader: "Utilisez votre code lors de votre prochain achat.",
-      h1: "Nous avons une remise pour vous",
-      sub: "Objets de voyage<br>et vêtements RODI.",
-      p: "Utilisez votre code sur une sélection de nos objets de voyage et vêtements.",
-      label: "Votre code de réduction",
-      note: "Utilisez-le lors de votre prochain achat<br>et obtenez {{ discount_label }} de réduction.",
-      cta: "Utiliser ma remise",
-    },
-    it: {
-      subject: "Uno sconto per il tuo prossimo acquisto",
-      preheader: "Usa il tuo codice al prossimo acquisto.",
-      h1: "Abbiamo uno sconto per te",
-      sub: "Oggetti da viaggio<br>e abiti RODI.",
-      p: "Usa il tuo codice su una selezione dei nostri oggetti da viaggio e abiti.",
-      label: "Il tuo codice sconto",
-      note: "Usalo al tuo prossimo acquisto<br>e ottieni {{ discount_label }} di sconto.",
-      cta: "Usa il mio sconto",
-    },
   },
 
   "new-products": {
     es: { subject: "Nuevo en RODI", preheader: "Piezas nuevas para acompañarte en cada destino.", eyebrow: "Novedades", h1: "Descubre los nuevos productos", p: "Piezas nuevas para acompañarte en cada destino.", badge: "Nuevo", cta: "Ver novedades" },
     en: { subject: "New at RODI", preheader: "New pieces to go with you to every destination.", eyebrow: "What's new", h1: "Discover the new products", p: "New pieces to go with you to every destination.", badge: "New", cta: "See what's new" },
-    fr: { subject: "Nouveau chez RODI", preheader: "De nouvelles pièces pour vous accompagner dans chaque destination.", eyebrow: "Nouveautés", h1: "Découvrez les nouveaux produits", p: "De nouvelles pièces pour vous accompagner dans chaque destination.", badge: "Nouveau", cta: "Voir les nouveautés" },
-    it: { subject: "Novità da RODI", preheader: "Nuovi pezzi per accompagnarti in ogni destinazione.", eyebrow: "Novità", h1: "Scopri i nuovi prodotti", p: "Nuovi pezzi per accompagnarti in ogni destinazione.", badge: "Nuovo", cta: "Scopri le novità" },
   },
 
   "chapter-launch": {
@@ -361,22 +203,6 @@ const COPY = {
       tagline: "A clothing collection built around one place: its colour, its texture, its pace.",
       p2: "Limited runs, tied to that place and that moment.",
       cta: "Explore Chapter",
-    },
-    fr: {
-      subject: "Nouveau Chapter : {{ chapter.name }}",
-      preheader: "Une collection de vêtements inspirée d'un lieu.",
-      h1: "Découvrez le nouveau Chapter",
-      tagline: "Une collection de vêtements construite autour d'un lieu : sa couleur, sa texture, son rythme.",
-      p2: "Séries limitées, liées à ce lieu et à ce moment.",
-      cta: "Découvrir le Chapter",
-    },
-    it: {
-      subject: "Nuovo Chapter: {{ chapter.name }}",
-      preheader: "Una collezione di abiti ispirata a un luogo.",
-      h1: "Scopri il nuovo Chapter",
-      tagline: "Una collezione di abiti costruita attorno a un luogo: il suo colore, la sua texture, il suo ritmo.",
-      p2: "Edizioni limitate, legate a quel luogo e a quel momento.",
-      cta: "Esplora il Chapter",
     },
   },
 
@@ -399,31 +225,11 @@ const COPY = {
       cta: "Back to my cart",
       trust: [["truck", "Shipping cost<br>shown before you pay"], ["box", "Right of withdrawal<br>per your country"], ["globe", "Designed for<br>modern travelers"]],
     },
-    fr: {
-      subject: "Votre panier vous attend",
-      preheader: "Finalisez votre achat et préparez votre prochaine aventure.",
-      why: "Vous recevez cet e-mail car vous avez laissé des articles dans votre panier RODI.",
-      h1: "Votre panier vous attend",
-      p: "Il vous reste des articles dans votre panier. Finalisez votre achat et préparez votre prochaine aventure.",
-      cta: "Retourner au panier",
-      trust: [["truck", "Frais de livraison<br>affichés avant le paiement"], ["box", "Droit de rétractation<br>selon votre pays"], ["globe", "Conçu pour les<br>voyageurs modernes"]],
-    },
-    it: {
-      subject: "Il tuo carrello ti aspetta",
-      preheader: "Completa l'acquisto e preparati alla tua prossima avventura.",
-      why: "Ricevi questa email perché hai lasciato degli articoli nel carrello RODI.",
-      h1: "Il tuo carrello ti aspetta",
-      p: "Hai ancora degli articoli nel carrello. Completa l'acquisto e preparati alla tua prossima avventura.",
-      cta: "Torna al carrello",
-      trust: [["truck", "Costo di spedizione<br>mostrato prima del pagamento"], ["box", "Diritto di recesso<br>secondo il tuo paese"], ["globe", "Pensato per i<br>viaggiatori moderni"]],
-    },
   },
 
   "order-confirmation": {
     es: { subject: "Tu compra fue exitosa. Pedido {{ order_name }}", preheader: "Hemos recibido tu pedido y ya está en proceso de preparación.", eyebrow: "Gracias por ser parte de RODI", h1: "Tu compra fue exitosa", p: "Hemos recibido tu pedido y ya está en proceso de preparación. Te enviaremos un correo cuando sea despachado.", summary: "Resumen del pedido", order: "Pedido", subtotal: "Subtotal", discount: "Descuento", shipping: "Envío", free: "Gratis", taxes: "Impuestos", total: "Total", shipTo: "Enviar a", cta: "Ver pedido" },
     en: { subject: "Your purchase was successful. Order {{ order_name }}", preheader: "We have received your order and it is being prepared.", eyebrow: "Thank you for being part of RODI", h1: "Your purchase was successful", p: "We have received your order and it is being prepared. We will email you when it ships.", summary: "Order summary", order: "Order", subtotal: "Subtotal", discount: "Discount", shipping: "Shipping", free: "Free", taxes: "Taxes", total: "Total", shipTo: "Ship to", cta: "View order" },
-    fr: { subject: "Votre achat a bien été effectué. Commande {{ order_name }}", preheader: "Nous avons bien reçu votre commande et elle est en cours de préparation.", eyebrow: "Merci de faire partie de RODI", h1: "Votre achat a bien été effectué", p: "Nous avons bien reçu votre commande et elle est en cours de préparation. Nous vous enverrons un e-mail lors de son expédition.", summary: "Récapitulatif de la commande", order: "Commande", subtotal: "Sous-total", discount: "Réduction", shipping: "Livraison", free: "Gratuite", taxes: "Taxes", total: "Total", shipTo: "Livrer à", cta: "Voir la commande" },
-    it: { subject: "Il tuo acquisto è andato a buon fine. Ordine {{ order_name }}", preheader: "Abbiamo ricevuto il tuo ordine ed è in preparazione.", eyebrow: "Grazie di far parte di RODI", h1: "Il tuo acquisto è andato a buon fine", p: "Abbiamo ricevuto il tuo ordine ed è in preparazione. Ti invieremo un'email quando verrà spedito.", summary: "Riepilogo dell'ordine", order: "Ordine", subtotal: "Subtotale", discount: "Sconto", shipping: "Spedizione", free: "Gratuita", taxes: "Imposte", total: "Totale", shipTo: "Spedire a", cta: "Vedi l'ordine" },
   },
 
   "welcome-club": {
@@ -450,30 +256,6 @@ const COPY = {
         ["Benefits and community", "Partner offers, the Club community and early access to releases."],
       ],
       cta: "Get started",
-    },
-    fr: {
-      subject: "Bienvenue chez RODI Club",
-      preheader: "Votre planificateur de voyages, votre passeport et vos avantages, au même endroit.",
-      h1: "Bienvenue chez<br>RODI Club",
-      p: "Nous sommes ravis de vous compter parmi nous. RODI Club est votre espace pour planifier vos voyages, enregistrer vos destinations et accéder aux avantages et aux nouveautés de RODI.",
-      cols: [
-        ["Planifiez votre voyage", "Itinéraire, budget, Smart Packing et documents avec alertes."],
-        ["Votre passeport", "Vos nationalités et les conditions d'entrée pour toute destination."],
-        ["Avantages et communauté", "Offres de partenaires, communauté du Club et accès anticipé aux sorties."],
-      ],
-      cta: "Commencer",
-    },
-    it: {
-      subject: "Benvenuto in RODI Club",
-      preheader: "Il tuo planner di viaggio, il tuo passaporto e i tuoi vantaggi, in un unico posto.",
-      h1: "Benvenuto in<br>RODI Club",
-      p: "Siamo felici di averti con noi. RODI Club è il tuo spazio per pianificare i viaggi, salvare le destinazioni e accedere ai vantaggi e alle novità di RODI.",
-      cols: [
-        ["Pianifica il viaggio", "Itinerario, budget, Smart Packing e documenti con avvisi."],
-        ["Il tuo passaporto", "Le tue nazionalità e i requisiti d'ingresso per qualsiasi destinazione."],
-        ["Vantaggi e community", "Offerte dei partner, community del Club e accesso anticipato alle novità."],
-      ],
-      cta: "Inizia",
     },
   },
 
@@ -508,43 +290,11 @@ const COPY = {
       ],
       cta: "Explore RODI Club",
     },
-    fr: {
-      subject: "Votre compte est prêt",
-      preheader: "Vous avez un accès complet à RODI Club, offert.",
-      eyebrow: "Bienvenue chez RODI Club",
-      h1: "Votre compte est prêt",
-      p: "Vous bénéficiez de {{ promo_months }} mois d'accès complet à RODI Club, sans frais.",
-      until: "Disponible jusqu'au {{ access_until }}.",
-      items: [
-        ["plane", "Voyages illimités", "Planifiez autant de voyages que vous le souhaitez, avec budget et partage des dépenses."],
-        ["briefcase", "Smart Packing et Toolkit", "Des listes de bagages intelligentes et la boîte à outils de voyage complète."],
-        ["bell", "Mode urgence", "Contacts personnalisés et ambassades de votre nationalité au Portugal et au Maroc."],
-        ["globe", "Journal et communauté", "Journal de voyage, carte des souvenirs et communauté du Club pour questionner et recommander."],
-      ],
-      cta: "Découvrir RODI Club",
-    },
-    it: {
-      subject: "Il tuo account è pronto",
-      preheader: "Hai accesso completo a RODI Club, in omaggio.",
-      eyebrow: "Benvenuto in RODI Club",
-      h1: "Il tuo account è pronto",
-      p: "Hai {{ promo_months }} {% if promo_months == 1 %}mese{% else %}mesi{% endif %} di accesso completo a RODI Club, senza costi.",
-      until: "Disponibile fino al {{ access_until }}.",
-      items: [
-        ["plane", "Viaggi illimitati", "Pianifica quanti viaggi vuoi, con budget e Split delle spese."],
-        ["briefcase", "Smart Packing e Toolkit", "Liste bagagli intelligenti e il toolkit di viaggio completo."],
-        ["bell", "Modalità emergenza", "Contatti personalizzati e le ambasciate della tua nazionalità in Portogallo e Marocco."],
-        ["globe", "Diario e community", "Diario di viaggio, Mappa dei ricordi e la community del Club per chiedere e consigliare."],
-      ],
-      cta: "Esplora RODI Club",
-    },
   },
 
   "verification-code": {
     es: { subject: "Tu código de verificación", preheader: "Úsalo para verificar tu cuenta en RODI.", h1: "Tu código de<br>verificación", p: "Usa el siguiente código para verificar tu cuenta en RODI y continuar tu experiencia.", once: "Este código solo puede usarse una vez. Expira en {{ expires_in_minutes | default: 15 }} minutos.", cta: "Ir a RODI", didnt: "¿No solicitaste este código?", support: "Contacta a nuestro equipo de soporte." },
     en: { subject: "Your verification code", preheader: "Use it to verify your RODI account.", h1: "Your verification<br>code", p: "Use the code below to verify your RODI account and continue your experience.", once: "This code can only be used once. It expires in {{ expires_in_minutes | default: 15 }} minutes.", cta: "Go to RODI", didnt: "Did not request this code?", support: "Contact our support team." },
-    fr: { subject: "Votre code de vérification", preheader: "Utilisez-le pour vérifier votre compte RODI.", h1: "Votre code de<br>vérification", p: "Utilisez le code ci-dessous pour vérifier votre compte RODI et poursuivre.", once: "Ce code ne peut être utilisé qu'une seule fois. Il expire dans {{ expires_in_minutes | default: 15 }} minutes.", cta: "Aller sur RODI", didnt: "Vous n'avez pas demandé ce code ?", support: "Contactez notre équipe d'assistance." },
-    it: { subject: "Il tuo codice di verifica", preheader: "Usalo per verificare il tuo account RODI.", h1: "Il tuo codice di<br>verifica", p: "Usa il codice qui sotto per verificare il tuo account RODI e continuare.", once: "Questo codice può essere usato una sola volta. Scade tra {{ expires_in_minutes | default: 15 }} minuti.", cta: "Vai su RODI", didnt: "Non hai richiesto questo codice?", support: "Contatta il nostro team di assistenza." },
   },
 };
 
@@ -571,26 +321,6 @@ COPY["marketing-confirmation"] = {
     ignore: "If this wasn't you, ignore this email: we won't subscribe you and you won't get it again.",
     unsub: "You can unsubscribe from any email we send.",
   },
-  fr: {
-    subject: "Confirmez votre abonnement à RODI",
-    preheader: "Un clic et c'est fait : lancements et nouveautés.",
-    eyebrow: "Une dernière étape",
-    h1: "Confirmez votre<br>abonnement",
-    p: "Vous avez demandé à recevoir les e-mails de RODI : l'annonce de la mise en vente d'une pièce, les nouveaux Chapters et les nouvelles du Club. Confirmez d'un clic pour que nous puissions vous écrire.",
-    cta: "Confirmer l'abonnement",
-    ignore: "Si ce n'était pas vous, ignorez cet e-mail : nous ne vous abonnerons pas et vous ne le recevrez plus.",
-    unsub: "Vous pouvez vous désabonner depuis chaque e-mail.",
-  },
-  it: {
-    subject: "Conferma la tua iscrizione a RODI",
-    preheader: "Un clic ed è fatta: lanci e novità.",
-    eyebrow: "Un ultimo passo",
-    h1: "Conferma la tua<br>iscrizione",
-    p: "Hai chiesto di ricevere le e-mail di RODI: l'avviso quando un capo è in vendita, i nuovi Chapters e le novità del Club. Conferma con un clic così potremo scriverti.",
-    cta: "Conferma iscrizione",
-    ignore: "Se non sei stato tu, ignora questa e-mail: non ti iscriveremo e non la riceverai più.",
-    unsub: "Puoi annullare l'iscrizione da qualsiasi e-mail.",
-  },
 };
 
 // copy("id", "es") -> strings; all("id", "subject") -> { es, en, fr, it }
@@ -600,8 +330,6 @@ const copy = (id, lang) => COPY[id][lang];
 COPY["dispatch"] = {
   es: { subject: "{{ dispatch.title }}", preheader: "El despacho de RODI: lugares, piezas y viajes.", eyebrow: "RODI Dispatch", read: "Leer más", cta: "Explorar RODI", quote: "Hecho para ir a lugares." },
   en: { subject: "{{ dispatch.title }}", preheader: "The RODI dispatch: places, pieces and journeys.", eyebrow: "RODI Dispatch", read: "Read more", cta: "Explore RODI", quote: "Made for going places." },
-  fr: { subject: "{{ dispatch.title }}", preheader: "La dépêche RODI : lieux, pièces et voyages.", eyebrow: "RODI Dispatch", read: "Lire la suite", cta: "Découvrir RODI", quote: "Fait pour aller ailleurs." },
-  it: { subject: "{{ dispatch.title }}", preheader: "Il dispaccio RODI: luoghi, capi e viaggi.", eyebrow: "RODI Dispatch", read: "Leggi di più", cta: "Scopri RODI", quote: "Fatto per andare lontano." },
 };
 
 // Parent/guardian authorization for a member aged 15-17 (sent by the app, see app/legal.server.ts). {{ member_name }} is
@@ -627,26 +355,6 @@ COPY["guardian-consent"] = {
     cta: "Review and respond",
     expires: "The link expires in 30 days. If you were not expecting this email you can ignore it: the account will stay paused.",
   },
-  fr: {
-    subject: "Autorisation pour le compte d'un mineur sur RODI Club",
-    preheader: "Nous avons besoin de votre autorisation avant d'activer son compte.",
-    h1: "Votre autorisation",
-    named: "{{ member_name | escape }} a créé un compte RODI Club et vous a indiqué comme parent ou tuteur légal.",
-    anon: "Une personne mineure a créé un compte RODI Club et vous a indiqué comme parent ou tuteur légal.",
-    p: "Comme elle a entre 15 et 17 ans, son compte reste en pause jusqu'à votre autorisation. La page explique quelles données nous traitons et les restrictions appliquées aux mineurs, et vous permet d'accepter ou de refuser.",
-    cta: "Consulter et répondre",
-    expires: "Le lien expire dans 30 jours. Si vous n'attendiez pas cet e-mail, vous pouvez l'ignorer : le compte restera en pause.",
-  },
-  it: {
-    subject: "Autorizzazione per l'account di un minore su RODI Club",
-    preheader: "Ci serve la tua autorizzazione prima di attivare il suo account.",
-    h1: "La tua autorizzazione",
-    named: "{{ member_name | escape }} ha creato un account RODI Club e ti ha indicato come genitore o tutore legale.",
-    anon: "Una persona minorenne ha creato un account RODI Club e ti ha indicato come genitore o tutore legale.",
-    p: "Poiché ha tra 15 e 17 anni, il suo account resta in pausa finché non lo autorizzi. La pagina spiega quali dati trattiamo e le restrizioni per i minori, e ti permette di accettare o rifiutare.",
-    cta: "Leggi e rispondi",
-    expires: "Il link scade tra 30 giorni. Se non aspettavi questa email puoi ignorarla: l'account resterà in pausa.",
-  },
 };
 
 // Sender identification line in every footer ("Operado por <legal name> · NIT <tax id> · <address>"). The values come
@@ -654,8 +362,6 @@ COPY["guardian-consent"] = {
 const LEGAL_FOOTER = {
   es: { operatedBy: "Operado por", taxId: "NIT" },
   en: { operatedBy: "Operated by", taxId: "NIT" },
-  fr: { operatedBy: "Exploité par", taxId: "NIT" },
-  it: { operatedBy: "Gestito da", taxId: "NIT" },
 };
 
 const all = (id, key) => Object.fromEntries(LANGS.map((l) => [l, COPY[id][l][key]]));

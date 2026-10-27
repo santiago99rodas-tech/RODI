@@ -21,7 +21,7 @@ export type AiRequest = {
 
 const CATS = ["museum", "monument", "view", "walk", "nature", "beach", "adventure", "food", "shop", "night", "rest"];
 const MODES = ["classic", "tailored", "discover", "secret"];
-const LANGS: Record<string, string> = { es: "Spanish", en: "English", fr: "French", it: "Italian" };
+const LANGS: Record<string, string> = { es: "Spanish", en: "English" };
 const MAX_LEGS = 12, MAX_DAYS_TOTAL = 45, MAX_POOL = 48, MAX_TIP = 100;
 
 export function aiItineraryEnabled(): boolean {

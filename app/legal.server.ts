@@ -14,7 +14,7 @@ import { sendTemplateEmail } from "./emails.server";
 //   - 15-17 need a parent/guardian to approve through an emailed link (/legal/guardian); under 15 cannot use the Club.
 // Every acceptance attempt is an append-only LegalAcceptance row (document, version, ip, user agent, source).
 
-export const LEGAL_LOCALES = ["es", "en", "fr", "it"] as const;
+export const LEGAL_LOCALES = ["es", "en"] as const;
 export type AgeBand = "adult" | "minor" | "under_15";
 export type GuardianState = "none" | "pending" | "approved" | "declined";
 

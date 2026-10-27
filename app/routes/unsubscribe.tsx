@@ -9,8 +9,6 @@ import { unsubscribeCustomer, verifyUnsubscribe } from "../unsubscribe.server";
 const TEXT = {
   es: { title: "Darte de baja", ask: "¿Quieres dejar de recibir correos de marketing de RODI Club?", button: "Sí, darme de baja", done: "Listo. Ya no recibirás correos de marketing de RODI Club.", note: "Seguirás recibiendo los correos de tus pedidos y de tu cuenta.", bad: "Este enlace no es válido.", retry: "No pudimos completarlo. Inténtalo de nuevo." },
   en: { title: "Unsubscribe", ask: "Do you want to stop receiving marketing emails from RODI Club?", button: "Yes, unsubscribe me", done: "Done. You will no longer receive marketing emails from RODI Club.", note: "You will still get emails about your orders and your account.", bad: "This link is not valid.", retry: "We could not complete that. Please try again." },
-  fr: { title: "Se désabonner", ask: "Voulez-vous ne plus recevoir les e-mails marketing de RODI Club ?", button: "Oui, me désabonner", done: "C'est fait. Vous ne recevrez plus d'e-mails marketing de RODI Club.", note: "Vous continuerez à recevoir les e-mails concernant vos commandes et votre compte.", bad: "Ce lien n'est pas valide.", retry: "Nous n'avons pas pu terminer. Veuillez réessayer." },
-  it: { title: "Annulla l'iscrizione", ask: "Vuoi smettere di ricevere le email di marketing di RODI Club?", button: "Sì, annulla l'iscrizione", done: "Fatto. Non riceverai più email di marketing da RODI Club.", note: "Continuerai a ricevere le email sui tuoi ordini e sul tuo account.", bad: "Questo link non è valido.", retry: "Non siamo riusciti a completare. Riprova." },
 } as const;
 type Lang = keyof typeof TEXT;
 

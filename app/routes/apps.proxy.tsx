@@ -1345,7 +1345,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
       const data = parsed.plan;
       const totals = computeTotals(data);
-      const loc = ["es", "en", "fr", "it"].includes(body.locale) ? body.locale : "en";
+      const loc = ["es", "en"].includes(body.locale) ? body.locale : "en";
       const labels = PANEL_LABELS[loc];
 
       type Row = { category: string; label: string; amount: number };

@@ -11,7 +11,7 @@ import db from "../db.server";
 // shows whether it is configured (never the key itself) and lets staff send a test of each template to any address.
 
 // Plain constant on purpose: the page component cannot import values from a .server module.
-const LOCALES = ["es", "en", "fr", "it"];
+const LOCALES = ["es", "en"];
 
 const TEMPLATES: { id: AppEmailTemplate; label: string }[] = [
   { id: "account-ready", label: "Tu cuenta está lista (se envía al registrarse)" },

@@ -12,7 +12,7 @@ import { resendConfig } from "../resend.server";
 // Marketing campaigns. Pick an email, fill what it needs, preview it, send yourself a test, then "Prepare campaign"
 // (which snapshots who will receive it). Sending itself happens on the next screen and needs one more explicit press.
 
-const LOCALES = ["es", "en", "fr", "it"];
+const LOCALES = ["es", "en"];
 const STATUS_LABEL: Record<string, string> = { draft: "Preparada", sending: "Enviando", sent: "Enviada", cancelled: "Cancelada" };
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {

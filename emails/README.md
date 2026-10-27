@@ -1,7 +1,7 @@
 # RODI emails
 
 One source for every customer email. Each email is written once (`src/*.js`, using the blocks in `lib/components.js`) and built
-into Liquid HTML for **es, en, fr and it**. All wording is in `src/copy.js` and must match what RODI really offers (Club features, Chapters, travel objects, Services, partner benefits); do not add perks, prices or offers that are not live in the store.
+into Liquid HTML for **es and en** (French and Italian were removed on 2026-10-27, when the shop kept only English and Spanish). All wording is in `src/copy.js` and must match what RODI really offers (Club features, Chapters, travel objects, Services, partner benefits); do not add perks, prices or offers that are not live in the store.
 
 ```
 npm install      # once (liquidjs + sharp, dev only)
@@ -28,7 +28,7 @@ opted in to email marketing.
 
 Admin > Settings > Notifications > Customer notifications > open the template > replace the HTML body with
 `dist/<lang>/<id>.html`, set the subject from `manifest.json`, use "Preview" and "Send test email". Shopify keeps one body per
-language: the `en` file is the default and `es`/`fr`/`it` are registered as translations (translationsRegister on the EmailTemplate resource).
+language: the `en` file is the default and `es` is registered as a translation (translationsRegister on the EmailTemplate resource).
 
 ## Images
 
@@ -57,7 +57,7 @@ One-time setup (done by a person, in this order):
    - `RESEND_API_KEY`: the key (never commit it)
    - `EMAIL_FROM`: for example `RODI Club <club@mail.rodiclub.com>` (must be on the verified domain)
    - `EMAIL_REPLY_TO`: optional, defaults to `contact@rodiclub.com`
-   - `EMAIL_DEFAULT_LOCALE`: optional (`es`, `en`, `fr`, `it`), used when the customer has no supported language; defaults to `en`
+   - `EMAIL_DEFAULT_LOCALE`: optional (`es`, `en`), used when the customer has no supported language; defaults to `en`
 4. Admin > Email (Resend) shows the status and sends a test of each template to any address.
 
 Until `RESEND_API_KEY` and `EMAIL_FROM` exist, sending is skipped (and logged); nothing breaks.

@@ -60,7 +60,7 @@ export function roomLeft(existingCount: number, incomingCount: number): { fit: n
 type Hit = { name: string; sub: string; hood: string; category: string; lat: number; lng: number; osmId: string };
 
 const PHOTON = "https://photon.komoot.io/api/";
-const PHOTON_LANGS = ["en", "fr", "it", "de"];
+const PHOTON_LANGS = ["en", "de"];
 const UA = "RODI-Club-RouteMap/1.0 (+https://rodiclub.com)";
 const cache = new Map<string, { t: number; hits: Hit[] }>();
 const CACHE_TTL = 15 * 60 * 1000, CACHE_MAX = 800;

@@ -9,8 +9,6 @@ const img = (name) => `${T.ASSET_BASE}${name}?v=${T.ASSET_VERSION}`;
 const FOOT = {
   es: { nav: ["Destinos", "Servicios", "Chapters", "RODI Club"], rights: "Todos los derechos reservados.", privacy: "Política de privacidad", terms: "Términos", support: "Soporte", unsub: "Darse de baja", why: "Recibes este correo porque formas parte de RODI Club." },
   en: { nav: ["Destinations", "Services", "Chapters", "RODI Club"], rights: "All rights reserved.", privacy: "Privacy policy", terms: "Terms", support: "Support", unsub: "Unsubscribe", why: "You are receiving this email because you are part of RODI Club." },
-  fr: { nav: ["Destinations", "Services", "Chapters", "RODI Club"], rights: "Tous droits réservés.", privacy: "Politique de confidentialité", terms: "Conditions", support: "Assistance", unsub: "Se désabonner", why: "Vous recevez cet e-mail car vous faites partie de RODI Club." },
-  it: { nav: ["Destinazioni", "Servizi", "Chapters", "RODI Club"], rights: "Tutti i diritti riservati.", privacy: "Informativa sulla privacy", terms: "Termini", support: "Assistenza", unsub: "Annulla l'iscrizione", why: "Ricevi questa email perché fai parte di RODI Club." },
 };
 
 const spacer = (h) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td height="${h}" style="height:${h}px;font-size:0;line-height:0;">&nbsp;</td></tr></table>`;

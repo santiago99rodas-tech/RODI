@@ -6,7 +6,7 @@ import type { CampaignTemplateId } from "./campaign-spec";
 // Renders the built email templates from ./emails (see emails/README.md): the same Liquid files that are installed in
 // Shopify notifications, filled with the data the app has. Kept free of database imports so it can be exercised alone.
 
-export const EMAIL_LOCALES = ["es", "en", "fr", "it"] as const;
+export const EMAIL_LOCALES = ["es", "en"] as const;
 export type EmailLocale = (typeof EMAIL_LOCALES)[number];
 export type AppEmailTemplate = "account-ready" | "welcome-club" | "abandoned-checkout" | "guardian-consent";
 export type EmailTemplateId = AppEmailTemplate | CampaignTemplateId;
@@ -47,8 +47,7 @@ export function normalizeLocale(raw: string | null | undefined): EmailLocale {
 }
 
 export function formatEmailDate(date: Date, locale: EmailLocale): string {
-  const text = new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(date);
-  return locale === "fr" ? text.replace(/^1 /, "1er ") : text; // French writes the first of the month as "1er"
+  return new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(date);
 }
 
 function readTemplate(locale: EmailLocale, template: EmailTemplateId): string {

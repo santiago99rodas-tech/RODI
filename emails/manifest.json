@@ -12,9 +12,7 @@
     "marketing": true,
     "subject": {
       "es": "Pregunta, recomienda y comparte con la comunidad",
-      "en": "Ask, recommend and share with the community",
-      "fr": "Posez vos questions, recommandez et partagez avec la communauté",
-      "it": "Chiedi, consiglia e condividi con la community"
+      "en": "Ask, recommend and share with the community"
     },
     "variables": [
       "shop.url",
@@ -34,9 +32,7 @@
     "marketing": true,
     "subject": {
       "es": "Invita a un amigo a RODI Club",
-      "en": "Invite a friend to RODI Club",
-      "fr": "Invitez un ami à RODI Club",
-      "it": "Invita un amico a RODI Club"
+      "en": "Invite a friend to RODI Club"
     },
     "variables": [
       "referral_code",
@@ -58,9 +54,7 @@
     "marketing": true,
     "subject": {
       "es": "Tu próximo viaje te espera en RODI",
-      "en": "Your next trip is waiting at RODI",
-      "fr": "Votre prochain voyage vous attend chez RODI",
-      "it": "Il tuo prossimo viaggio ti aspetta su RODI"
+      "en": "Your next trip is waiting at RODI"
     },
     "variables": [
       "shop.url",
@@ -80,9 +74,7 @@
     "marketing": true,
     "subject": {
       "es": "{{ dispatch.title }}",
-      "en": "{{ dispatch.title }}",
-      "fr": "{{ dispatch.title }}",
-      "it": "{{ dispatch.title }}"
+      "en": "{{ dispatch.title }}"
     },
     "variables": [
       "dispatch.title",
@@ -106,9 +98,7 @@
     "marketing": true,
     "subject": {
       "es": "Una oportunidad para tu próximo viaje",
-      "en": "An opportunity for your next trip",
-      "fr": "Une opportunité pour votre prochain voyage",
-      "it": "Un'opportunità per il tuo prossimo viaggio"
+      "en": "An opportunity for your next trip"
     },
     "variables": [
       "offer_text (optional)",
@@ -130,9 +120,7 @@
     "marketing": true,
     "subject": {
       "es": "Nuevos beneficios del Club",
-      "en": "New Club benefits",
-      "fr": "Nouveaux avantages du Club",
-      "it": "Nuovi vantaggi del Club"
+      "en": "New Club benefits"
     },
     "variables": [
       "shop.url",
@@ -152,9 +140,7 @@
     "marketing": true,
     "subject": {
       "es": "Un descuento para tu próxima compra",
-      "en": "A discount for your next purchase",
-      "fr": "Une remise pour votre prochain achat",
-      "it": "Uno sconto per il tuo prossimo acquisto"
+      "en": "A discount for your next purchase"
     },
     "variables": [
       "discount_code",
@@ -178,9 +164,7 @@
     "marketing": true,
     "subject": {
       "es": "Nuevo en RODI",
-      "en": "New at RODI",
-      "fr": "Nouveau chez RODI",
-      "it": "Novità da RODI"
+      "en": "New at RODI"
     },
     "variables": [
       "products[]",
@@ -202,9 +186,7 @@
     "marketing": true,
     "subject": {
       "es": "Nuevo Chapter: {{ chapter.name }}",
-      "en": "New Chapter: {{ chapter.name }}",
-      "fr": "Nouveau Chapter : {{ chapter.name }}",
-      "it": "Nuovo Chapter: {{ chapter.name }}"
+      "en": "New Chapter: {{ chapter.name }}"
     },
     "variables": [
       "chapter.name",
@@ -228,9 +210,7 @@
     "marketing": true,
     "subject": {
       "es": "Tu carrito sigue esperándote",
-      "en": "Your cart is still waiting",
-      "fr": "Votre panier vous attend",
-      "it": "Il tuo carrello ti aspetta"
+      "en": "Your cart is still waiting"
     },
     "variables": [
       "line_items",
@@ -253,9 +233,7 @@
     "marketing": false,
     "subject": {
       "es": "Tu compra fue exitosa. Pedido {{ order_name }}",
-      "en": "Your purchase was successful. Order {{ order_name }}",
-      "fr": "Votre achat a bien été effectué. Commande {{ order_name }}",
-      "it": "Il tuo acquisto è andato a buon fine. Ordine {{ order_name }}"
+      "en": "Your purchase was successful. Order {{ order_name }}"
     },
     "variables": [
       "order_name",
@@ -284,9 +262,7 @@
     "marketing": false,
     "subject": {
       "es": "Bienvenido a RODI Club",
-      "en": "Welcome to RODI Club",
-      "fr": "Bienvenue chez RODI Club",
-      "it": "Benvenuto in RODI Club"
+      "en": "Welcome to RODI Club"
     },
     "variables": [
       "shop.url"
@@ -305,9 +281,7 @@
     "marketing": false,
     "subject": {
       "es": "Tu cuenta ya está lista",
-      "en": "Your account is ready",
-      "fr": "Votre compte est prêt",
-      "it": "Il tuo account è pronto"
+      "en": "Your account is ready"
     },
     "variables": [
       "promo_months",
@@ -328,9 +302,7 @@
     "marketing": false,
     "subject": {
       "es": "Tu código de verificación",
-      "en": "Your verification code",
-      "fr": "Votre code de vérification",
-      "it": "Il tuo codice di verifica"
+      "en": "Your verification code"
     },
     "variables": [
       "code",
@@ -351,9 +323,7 @@
     "marketing": false,
     "subject": {
       "es": "Autorización para la cuenta de un menor en RODI Club",
-      "en": "Authorization for a minor's RODI Club account",
-      "fr": "Autorisation pour le compte d'un mineur sur RODI Club",
-      "it": "Autorizzazione per l'account di un minore su RODI Club"
+      "en": "Authorization for a minor's RODI Club account"
     },
     "variables": [
       "consent_url",
@@ -374,9 +344,7 @@
     "marketing": false,
     "subject": {
       "es": "Confirma tu suscripción a RODI",
-      "en": "Confirm your RODI subscription",
-      "fr": "Confirmez votre abonnement à RODI",
-      "it": "Conferma la tua iscrizione a RODI"
+      "en": "Confirm your RODI subscription"
     },
     "variables": [
       "customer.subscribe_url",
