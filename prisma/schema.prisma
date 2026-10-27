@@ -236,10 +236,12 @@ model Membership {
   cancelledAt      DateTime?
   founder          Boolean   @default(false) // "Fundador" profile: launch founders (badge, locked price); only counts while Club is active
   founderSince     DateTime?
+  founderNumber    Int?      // 1..FOUNDER_CAP, assigned in order when the Fundador pass is bought (or the flag is set by hand); freed when the flag is removed
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
   @@unique([shop, customerId])
+  @@unique([shop, founderNumber])
 }
 
 // Fase 3 Milestone 5, Club-only. A personal travel journal entry — may

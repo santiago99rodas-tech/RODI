@@ -22,7 +22,15 @@ export type EffectiveMembership = {
   isClub: boolean;
   plan: PlanProfile;
   accessUntil: Date | null;
+  founderNumber: number | null; // only while the member is a Fundador with Club active
+  lifetime: boolean; // Club with no end date (the Fundador pass)
 };
+
+// Fundador: limited launch tier. Club for life (a date far in the future, so every existing "date in the future = Club" check
+// keeps working untouched), a member number 1..FOUNDER_CAP in order of arrival, and a badge in the theme.
+export const FOUNDER_CAP = Number(process.env.FOUNDER_CAP) || 20;
+const LIFETIME_END = new Date("2099-12-31T23:59:59Z");
+const isLifetimeDate = (date: Date | null | undefined) => Boolean(date && date.getUTCFullYear() >= 2090);
 
 const PROMO_MONTHS = Number(process.env.PROMO_MONTHS) || 3;
 
@@ -52,26 +60,26 @@ function addMonths(date: Date, months: number): Date {
 // distinct access level, it still resolves to isClub: false).
 export async function resolveMembership(shop: string, customerId: string): Promise<EffectiveMembership> {
   const row = await db.membership.findUnique({ where: { shop_customerId: { shop, customerId } } });
-  if (!row) return { status: "FREE", isClub: false, plan: "free", accessUntil: null };
+  if (!row) return { status: "FREE", isClub: false, plan: "free", accessUntil: null, founderNumber: null, lifetime: false };
 
   const now = new Date();
 
   const clubPlan: PlanProfile = row.founder ? "founder" : "club";
 
   if (row.status === "ACTIVE" && row.currentPeriodEnd && row.currentPeriodEnd > now) {
-    return { status: "ACTIVE", isClub: true, plan: clubPlan, accessUntil: row.currentPeriodEnd };
+    return { status: "ACTIVE", isClub: true, plan: clubPlan, accessUntil: row.currentPeriodEnd, founderNumber: row.founder ? row.founderNumber : null, lifetime: isLifetimeDate(row.currentPeriodEnd) };
   }
 
   if (row.promoEnd && row.promoEnd > now) {
-    return { status: "PROMOTIONAL_ACCESS", isClub: true, plan: clubPlan, accessUntil: row.promoEnd };
+    return { status: "PROMOTIONAL_ACCESS", isClub: true, plan: clubPlan, accessUntil: row.promoEnd, founderNumber: row.founder ? row.founderNumber : null, lifetime: isLifetimeDate(row.promoEnd) };
   }
 
   const lapsedUntil = row.currentPeriodEnd ?? row.promoEnd;
   if (lapsedUntil) {
-    return { status: "EXPIRED", isClub: false, plan: "free", accessUntil: lapsedUntil };
+    return { status: "EXPIRED", isClub: false, plan: "free", accessUntil: lapsedUntil, founderNumber: null, lifetime: false };
   }
 
-  return { status: "FREE", isClub: false, plan: "free", accessUntil: null };
+  return { status: "FREE", isClub: false, plan: "free", accessUntil: null, founderNumber: null, lifetime: false };
 }
 
 // Grants (or re-grants) the launch promo. Idempotent: upserts on the
@@ -106,6 +114,7 @@ export async function extendClubAccess(admin: AdminApiContext, shop: string, cus
   const key = { shop_customerId: { shop, customerId } };
   const row = await db.membership.findUnique({ where: key });
   const now = new Date();
+  if (isLifetimeDate(row?.promoEnd) || isLifetimeDate(row?.currentPeriodEnd)) return; // Fundador: Club for life, nothing to extend
   if (row?.status === "ACTIVE" && row.currentPeriodEnd && row.currentPeriodEnd > now) {
     await db.membership.update({ where: key, data: { currentPeriodEnd: addMonths(row.currentPeriodEnd, months) } });
   } else {
@@ -124,6 +133,7 @@ export async function extendClubAccess(admin: AdminApiContext, shop: string, cus
 
 const METAFIELD_NAMESPACE = "custom";
 const METAFIELD_KEY = "club_access_until";
+const FOUNDER_METAFIELD_KEY = "founder_number";
 
 // Projects the single derived date onto the customer so Liquid can gate on
 // it with no app round-trip: `{% if customer.metafields.custom.club_access_until.value > 'now' %}`.
@@ -138,6 +148,26 @@ export async function projectMembershipToMetafield(
   const membership = await resolveMembership(shop, customerId);
   if (!membership.accessUntil) return; // nothing to project yet — Liquid treats a missing metafield as Free
 
+  const metafields: { ownerId: string; namespace: string; key: string; type: string; value: string }[] = [
+    {
+      ownerId: `gid://shopify/Customer/${customerId}`,
+      namespace: METAFIELD_NAMESPACE,
+      key: METAFIELD_KEY,
+      type: "date_time",
+      value: membership.accessUntil.toISOString(),
+    },
+  ];
+  // The Fundador badge in the theme reads this one; it is only sent while the member really is a Fundador with Club active.
+  if (membership.founderNumber) {
+    metafields.push({
+      ownerId: `gid://shopify/Customer/${customerId}`,
+      namespace: METAFIELD_NAMESPACE,
+      key: FOUNDER_METAFIELD_KEY,
+      type: "number_integer",
+      value: String(membership.founderNumber),
+    });
+  }
+
   const response = await admin.graphql(
     `#graphql
       mutation setClubAccessUntil($metafields: [MetafieldsSetInput!]!) {
@@ -146,17 +176,7 @@ export async function projectMembershipToMetafield(
         }
       }`,
     {
-      variables: {
-        metafields: [
-          {
-            ownerId: `gid://shopify/Customer/${customerId}`,
-            namespace: METAFIELD_NAMESPACE,
-            key: METAFIELD_KEY,
-            type: "date_time",
-            value: membership.accessUntil.toISOString(),
-          },
-        ],
-      },
+      variables: { metafields },
     },
   );
 
@@ -165,6 +185,50 @@ export async function projectMembershipToMetafield(
   if (userErrors?.length) {
     throw new Error(`metafieldsSet failed for customer ${customerId}: ${JSON.stringify(userErrors)}`);
   }
+}
+
+// Gives the next free Fundador number (the lowest unused one, so a number freed by removing the flag is reused). Returns null when
+// all FOUNDER_CAP numbers are taken. Concurrency-safe: the unique (shop, founderNumber) index rejects a duplicate and we retry.
+async function assignFounderNumber(shop: string, customerId: string): Promise<number | null> {
+  const key = { shop_customerId: { shop, customerId } };
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const row = await db.membership.findUnique({ where: key });
+    if (row?.founderNumber) return row.founderNumber;
+    const taken = await db.membership.findMany({ where: { shop, founderNumber: { not: null } }, select: { founderNumber: true } });
+    const used = new Set(taken.map((t) => t.founderNumber as number));
+    let next = 1;
+    while (used.has(next)) next += 1;
+    if (next > FOUNDER_CAP) return null;
+    try {
+      await db.membership.update({ where: key, data: { founderNumber: next } });
+      return next;
+    } catch (err) {
+      if ((err as { code?: string })?.code === "P2002") continue; // another request took that number first
+      throw err;
+    }
+  }
+  return null;
+}
+
+// The Fundador pass was bought: Club for life + the next member number + the badge. Idempotent for a member who already is one.
+export async function grantFounderAccess(admin: AdminApiContext, shop: string, customerId: string, source = "founder_pass"): Promise<{ number: number | null }> {
+  const key = { shop_customerId: { shop, customerId } };
+  const now = new Date();
+  const existing = await db.membership.findUnique({ where: key });
+  const data = {
+    status: "PROMOTIONAL_ACCESS",
+    promoStart: existing?.promoStart ?? now,
+    promoEnd: LIFETIME_END,
+    promoSource: source,
+    cancelledAt: null,
+    founder: true,
+    founderSince: existing?.founderSince ?? now,
+  };
+  await db.membership.upsert({ where: key, create: { shop, customerId, ...data }, update: data });
+  const number = await assignFounderNumber(shop, customerId);
+  if (number === null) console.warn(`[founder] all ${FOUNDER_CAP} numbers are taken; customer ${customerId} got Club for life without a number`);
+  await projectMembershipToMetafield(admin, shop, customerId);
+  return { number };
 }
 
 // ---------------------------------------------------------------------------
@@ -203,9 +267,23 @@ export async function applyManualMembership(
     };
     await db.membership.upsert({ where: key, create: { shop, customerId, ...data }, update: data });
   } else if (action.kind === "founder") {
-    // Only the profile flag changes; dates and the projected metafield stay as they are.
-    const data = { founder: action.value, founderSince: action.value ? now : null };
+    // The profile flag changes; turning it on also takes the next Fundador number, turning it off frees it.
+    const existing = await db.membership.findUnique({ where: key });
+    // Club for life only exists as part of Fundador: taking the profile away from a lifetime member also ends that access.
+    const endsLifetime = !action.value && (isLifetimeDate(existing?.promoEnd) || isLifetimeDate(existing?.currentPeriodEnd));
+    const past = new Date(now.getTime() - 60 * 1000);
+    const data = action.value
+      ? { founder: true, founderSince: now }
+      : {
+          founder: false,
+          founderSince: null,
+          founderNumber: null,
+          ...(endsLifetime ? { status: "EXPIRED", promoEnd: past, currentPeriodEnd: existing?.currentPeriodEnd ? past : null, cancelledAt: now } : {}),
+        };
     await db.membership.upsert({ where: key, create: { shop, customerId, ...data }, update: data });
+    if (action.value) await assignFounderNumber(shop, customerId);
+    else await clearFounderMetafield(admin, customerId);
+    await projectMembershipToMetafield(admin, shop, customerId);
     return;
   } else if (action.kind === "expire") {
     const past = new Date(now.getTime() - 60 * 1000);
@@ -227,12 +305,16 @@ export async function applyManualMembership(
       currentPeriodEnd: null,
       cancelledAt: null,
       promoSource: "manual_reset",
+      founder: false,
+      founderSince: null,
+      founderNumber: null,
     };
     await db.membership.upsert({ where: key, create: { shop, customerId, ...data }, update: data });
   }
 
   if (action.kind === "free") {
     await clearMembershipMetafield(admin, customerId);
+    await clearFounderMetafield(admin, customerId);
   } else {
     await projectMembershipToMetafield(admin, shop, customerId);
   }
@@ -252,6 +334,31 @@ export async function clearMembershipMetafield(admin: AdminApiContext, customerI
       variables: {
         metafields: [
           { ownerId: `gid://shopify/Customer/${customerId}`, namespace: METAFIELD_NAMESPACE, key: METAFIELD_KEY },
+        ],
+      },
+    },
+  );
+
+  const body = await response.json();
+  const userErrors = body?.data?.metafieldsDelete?.userErrors;
+  if (userErrors?.length) {
+    throw new Error(`metafieldsDelete failed for customer ${customerId}: ${JSON.stringify(userErrors)}`);
+  }
+}
+
+// Removes the projected Fundador number so the badge disappears from the theme.
+export async function clearFounderMetafield(admin: AdminApiContext, customerId: string) {
+  const response = await admin.graphql(
+    `#graphql
+      mutation clearFounderNumber($metafields: [MetafieldIdentifierInput!]!) {
+        metafieldsDelete(metafields: $metafields) {
+          userErrors { field message }
+        }
+      }`,
+    {
+      variables: {
+        metafields: [
+          { ownerId: `gid://shopify/Customer/${customerId}`, namespace: METAFIELD_NAMESPACE, key: FOUNDER_METAFIELD_KEY },
         ],
       },
     },

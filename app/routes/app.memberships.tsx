@@ -3,7 +3,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useFetcher, useLoaderData, useNavigate } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
-import { applyManualMembership, resolveMembership } from "../membership.server";
+import { applyManualMembership, FOUNDER_CAP, grantFounderAccess, resolveMembership } from "../membership.server";
 import { sendWelcomeClubEmail, sendWelcomeClubEmailAuto } from "../emails.server";
 import db from "../db.server";
 
@@ -22,6 +22,8 @@ type CustomerRowData = {
   plan: string;
   accessUntil: string | null;
   source: string | null;
+  founderNumber: number | null;
+  lifetime: boolean;
 };
 
 async function describeCustomers(admin: any, shop: string, nodes: { id: string; email: string | null; displayName: string | null }[]) {
@@ -39,6 +41,8 @@ async function describeCustomers(admin: any, shop: string, nodes: { id: string; 
       plan: membership.plan,
       accessUntil: membership.accessUntil ? membership.accessUntil.toISOString() : null,
       source: row?.promoSource ?? null,
+      founderNumber: membership.founderNumber,
+      lifetime: membership.lifetime,
     });
   }
   return rows;
@@ -80,7 +84,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     recentRows = await describeCustomers(admin, shop, (body?.data?.nodes ?? []).filter(Boolean));
   }
 
-  return { q, found, recentRows };
+  const founderTaken = await db.membership.count({ where: { shop, founderNumber: { not: null } } });
+  return { q, found, recentRows, founderTaken, founderCap: FOUNDER_CAP };
 };
 
 const GRANT_MONTHS = [1, 3, 12];
@@ -122,10 +127,18 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       if (result.outcome === "sent") return { ok: `Correo de bienvenida enviado a ${email}` };
       return { error: `No se envió el correo de bienvenida: ${result.detail ?? result.outcome}` };
     }
-    if (intent === "founder" || intent === "unfounder") {
-      const value = intent === "founder";
-      await applyManualMembership(admin, shop, customerId, { kind: "founder", value });
-      return { ok: value ? "Marcado como Fundador" : "Ya no es Fundador" };
+    if (intent === "founder") {
+      // Fundador = Club for life + the next member number + the badge (the same thing the Fundador pass gives).
+      const wasClub = (await resolveMembership(shop, customerId)).isClub;
+      const { number } = await grantFounderAccess(admin, shop, customerId, "manual_founder");
+      const granted = number ? `Fundador n.º ${String(number).padStart(3, "0")}: Club de por vida` : `Club de por vida (los ${FOUNDER_CAP} números ya están ocupados, sin número)`;
+      if (wasClub) return { ok: granted };
+      const welcome = await sendWelcomeClubEmailAuto(admin, shop, customerId);
+      return { ok: welcome.outcome === "sent" ? `${granted} y se envió el correo de bienvenida` : granted };
+    }
+    if (intent === "unfounder") {
+      await applyManualMembership(admin, shop, customerId, { kind: "founder", value: false });
+      return { ok: "Ya no es Fundador (el número queda libre)" };
     }
     if (intent === "expire") {
       await applyManualMembership(admin, shop, customerId, { kind: "expire" });
@@ -155,8 +168,9 @@ function CustomerRow({ customer, fetcher }: { customer: CustomerRowData; fetcher
           {customer.name ? `${customer.name} · ` : ""}ID {customer.id}
         </s-text>
         <s-text>
-          {PLAN_LABEL[customer.plan] ?? "Free"} — {STATUS_LABEL[customer.status] ?? customer.status}
-          {customer.accessUntil ? ` · hasta ${new Date(customer.accessUntil).toLocaleString("es-CO")}` : ""}
+          {PLAN_LABEL[customer.plan] ?? "Free"}
+          {customer.founderNumber ? ` n.º ${String(customer.founderNumber).padStart(3, "0")}` : ""} — {STATUS_LABEL[customer.status] ?? customer.status}
+          {customer.lifetime ? " · Club de por vida" : customer.accessUntil ? ` · hasta ${new Date(customer.accessUntil).toLocaleString("es-CO")}` : ""}
           {customer.source ? ` · origen: ${customer.source}` : ""}
         </s-text>
 
@@ -175,8 +189,18 @@ function CustomerRow({ customer, fetcher }: { customer: CustomerRowData; fetcher
           >
             Enviar correo de bienvenida
           </s-button>
-          <s-button disabled={busy || !customer.isClub} onClick={() => submit(customer.plan === "founder" ? "unfounder" : "founder")}>
-            {customer.plan === "founder" ? "Quitar Fundador" : "Marcar Fundador"}
+          <s-button
+            disabled={busy}
+            onClick={() => {
+              const removing = customer.plan === "founder";
+              const text = removing
+                ? `¿Quitar Fundador a ${customer.email ?? customer.id}? Pierde el Club de por vida y su número queda libre.`
+                : `¿Dar Fundador (Club de por vida y el siguiente número) a ${customer.email ?? customer.id}?`;
+              if (!window.confirm(text)) return;
+              submit(removing ? "unfounder" : "founder");
+            }}
+          >
+            {customer.plan === "founder" ? "Quitar Fundador" : "Dar Fundador"}
           </s-button>
           <s-button
             tone="critical"
@@ -205,7 +229,7 @@ function CustomerRow({ customer, fetcher }: { customer: CustomerRowData; fetcher
 }
 
 export default function Memberships() {
-  const { q, found, recentRows } = useLoaderData<typeof loader>();
+  const { q, found, recentRows, founderTaken, founderCap } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<typeof action>();
   const navigate = useNavigate();
   const shopify = useAppBridge();
@@ -221,6 +245,13 @@ export default function Memberships() {
 
   return (
     <s-page heading="RODI Club — membresías">
+      <s-section heading="Cupos Fundador">
+        <s-paragraph>
+          {founderTaken} de {founderCap} números de Fundador ocupados ({Math.max(0, founderCap - founderTaken)} libres). Se asignan en orden al comprar el
+          Pase Fundador o al usar «Dar Fundador».
+        </s-paragraph>
+      </s-section>
+
       <s-section heading="Buscar un cliente">
         <s-stack gap="base">
           <s-paragraph>

@@ -1,6 +1,6 @@
 import type { AdminApiContext } from "@shopify/shopify-app-react-router/server";
 import db from "./db.server";
-import { extendClubAccess, resolveMembership } from "./membership.server";
+import { extendClubAccess, grantFounderAccess, resolveMembership } from "./membership.server";
 import { sendWelcomeClubEmailAuto } from "./emails.server";
 
 // Prepaid Club passes: shop products whose variant SKU is CLUB-PASS-<months>M (CLUB-PASS-12M, CLUB-PASS-3M). When an order that contains one is
@@ -13,6 +13,11 @@ import { sendWelcomeClubEmailAuto } from "./emails.server";
 
 const SKU_RE = /^CLUB-PASS-(\d{1,2})M$/i;
 const PASS_SOURCE = "pass_purchase";
+
+// The Fundador pass (SKU CLUB-FOUNDER, limited to FOUNDER_CAP units in Shopify inventory) is not a number of months: it gives Club for
+// life, the next member number and the badge (see grantFounderAccess). It goes through the same one-row-per-order-line claim as the months.
+const FOUNDER_SKU = "CLUB-FOUNDER";
+export const isFounderSku = (sku: unknown) => String(sku ?? "").trim().toUpperCase() === FOUNDER_SKU;
 
 export function passMonths(sku: unknown): number | null {
   const m = SKU_RE.exec(String(sku ?? "").trim());
@@ -63,12 +68,13 @@ async function customerIdByEmail(admin: AdminApiContext, email: string): Promise
 }
 
 // Applies one claimed row. The claim (PENDING -> GRANTING) is atomic, so two deliveries can never apply the same row.
-async function applyRow(admin: AdminApiContext, shop: string, row: { id: string; months: number }, customerId: string) {
+async function applyRow(admin: AdminApiContext, shop: string, row: { id: string; months: number; sku: string }, customerId: string) {
   const claim = await db.clubPassGrant.updateMany({ where: { id: row.id, status: "PENDING" }, data: { status: "GRANTING", customerId } });
   if (claim.count !== 1) return false;
   try {
     const before = await resolveMembership(shop, customerId);
-    await extendClubAccess(admin, shop, customerId, row.months, PASS_SOURCE);
+    if (isFounderSku(row.sku)) await grantFounderAccess(admin, shop, customerId);
+    else await extendClubAccess(admin, shop, customerId, row.months, PASS_SOURCE);
     await db.clubPassGrant.update({ where: { id: row.id }, data: { status: "GRANTED", grantedAt: new Date() } });
     if (!before.isClub) await sendWelcomeClubEmailAuto(admin, shop, customerId); // never throws; deduplicated per customer
     return true;
@@ -81,8 +87,12 @@ async function applyRow(admin: AdminApiContext, shop: string, row: { id: string;
 export async function redeemPassOrder(admin: AdminApiContext, shop: string, order: PaidOrder): Promise<{ lines: number; granted: number; pending: number }> {
   const orderId = String(order.id ?? "");
   const passes = (order.line_items ?? [])
-    .map((li) => ({ lineId: String(li.id ?? ""), months: passMonths(li.sku), quantity: Math.max(1, Math.min(12, Number(li.quantity ?? 1) || 1)), sku: String(li.sku ?? "") }))
-    .filter((p) => p.lineId && p.months);
+    .map((li) => {
+      const founder = isFounderSku(li.sku);
+      // A Fundador pass is one per person: extra units on the same line do not add anything.
+      return { lineId: String(li.id ?? ""), months: founder ? 0 : passMonths(li.sku), quantity: founder ? 1 : Math.max(1, Math.min(12, Number(li.quantity ?? 1) || 1)), sku: String(li.sku ?? ""), founder };
+    })
+    .filter((p) => p.lineId && (p.founder || p.months));
   if (!orderId || !passes.length) return { lines: 0, granted: 0, pending: 0 };
 
   const email = String(order.email ?? order.contact_email ?? order.customer?.email ?? "").trim().toLowerCase() || null;
@@ -92,7 +102,7 @@ export async function redeemPassOrder(admin: AdminApiContext, shop: string, orde
   let granted = 0;
   let pending = 0;
   for (const p of passes) {
-    const months = (p.months as number) * p.quantity;
+    const months = (p.months ?? 0) * p.quantity;
     const key = { shop_orderId_lineItemId: { shop, orderId, lineItemId: p.lineId } };
     let row = await db.clubPassGrant.findUnique({ where: key });
     if (!row) {
